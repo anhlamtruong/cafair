@@ -1,0 +1,26 @@
+{
+  "name": "cafair",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=@starter/web",
+    "build:web": "npm run build --workspace=@starter/web",
+    "dev:llm": "npm run dev --workspace=@starter/llm",
+    "build:llm": "npm run build --workspace=@starter/llm",
+    "db:generate": "npm run db:generate --workspace=@starter/web",
+    "db:migrate": "npm run db:migrate --workspace=@starter/web",
+    "db:push": "npm run db:push --workspace=@starter/web",
+    "db:studio": "npm run db:studio --workspace=@starter/web",
+    "supa:start": "supabase start",
+    "supa:stop": "supabase stop",
+    "supa:status": "supabase status"
+  },
+  "devDependencies": {
+    "supabase": "^2.76.10",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,55 @@
+# ──────────────────────────────────────────────────────────────────────────
+# LLM Prompt Service — Docker Compose
+#
+# Usage:
+#   docker compose up              # start service + redis
+#   docker compose up -d           # start in background
+#   docker compose down            # stop everything
+#   docker compose up --build      # rebuild and start
+# ──────────────────────────────────────────────────────────────────────────
+
+services:
+  llm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: llm-prompt-service
+    ports:
+      - "${PORT:-3001}:3001"
+    environment:
+      - PORT=3001
+      - NODE_ENV=${NODE_ENV:-production}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - REDIS_URL=redis://redis:6379
+      - REDIS_CACHE_TTL=${REDIS_CACHE_TTL:-3600}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - llm-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: llm-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - llm-network
+
+volumes:
+  redis-data:
+
+networks:
+  llm-network:
+    driver: bridge
