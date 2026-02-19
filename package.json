@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "supabase": "^2.76.10",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
