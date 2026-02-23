@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { usersRouter } from "@/services/users/procedures";
 import { examplesRouter } from "@/services/examples/procedures";
 import { uploadsRouter } from "@/services/uploads/procedures";
+import { recruiterRouter } from "@/services/recruiter/procedures";
 
 export const appRouter = createTRPCRouter({
   hello: publicProcedure
@@ -22,7 +23,6 @@ export const appRouter = createTRPCRouter({
       }
     }),
 
-  // Protected health check
   protectedHello: authedProcedure.query(({ ctx }) => {
     try {
       return {
@@ -42,6 +42,7 @@ export const appRouter = createTRPCRouter({
   users: usersRouter,
   examples: examplesRouter,
   uploads: uploadsRouter,
+  recruiter: recruiterRouter,
 });
 
 export type AppRouter = typeof appRouter;
