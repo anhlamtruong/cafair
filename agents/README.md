@@ -70,3 +70,28 @@ These agents are designed to plug into:
 - Add a `candidatePacket.ts` orchestrator (triage + verify + microscreen → one UI payload)
 - Add an `atsPayload.ts` adapter (packet → structured ATS update object)
 - Add a `HANDOFF.md` for fullstack integration (payload contracts + examples)
+
+
+```bash
+agents/
+  README.md
+  src/
+    types.ts
+    index.ts
+    agents/
+      triage.ts
+      verify.ts
+      microscreen.ts
+      candidatePacket.ts        
+      atsPayload.ts            
+      candidatePlan.ts          
+    adapters/
+      novaAct.ts               
+      bedrock.ts               
+      embeddings.ts             
+  scripts/
+    run-local.ts
+    run-verify-local.ts
+    run-microscreen-local.ts
+    run-packet-local.ts        
+```
