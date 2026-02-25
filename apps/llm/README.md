@@ -1,16 +1,17 @@
 # LLM Prompt Service
 
-A focused, stateless AI prompt service powered by **Google Gemini 2.0 Flash**. It provides optimized prompt templates and a raw prompt API for structured AI interactions, with optional **Redis** caching.
+A focused, stateless AI service powered by **Amazon Nova Lite** (via AWS Bedrock) and **Google Gemini 2.0 Flash**. It provides candidate scoring, optimized prompt templates, and a raw prompt API for structured AI interactions, with optional **Redis** caching.
 
 ## Architecture
 
 ```
-Client → Express API → Prompt Formatter → Gemini AI → Response
-                              ↕
+Client → Express API → Prompt Formatter ─┬→ Amazon Nova (Bedrock) → Response
+                              ↕           └→ Gemini AI (fallback)
                         Redis Cache (optional)
 ```
 
 - **Stateless** — no conversation history, no user data stored
+- **Dual AI models** — Amazon Nova Lite (primary), Gemini Flash (fallback)
 - **Template-driven** — pre-built, optimized prompt templates
 - **Cache layer** — optional Redis for response deduplication
 - **Graceful degradation** — works without Redis if unavailable
@@ -20,6 +21,33 @@ Client → Express API → Prompt Formatter → Gemini AI → Response
 ### `GET /api/health`
 
 Health check with service status and Redis connectivity.
+
+### `POST /api/score` (Candidate Scoring)
+
+Score a candidate's resume against a job description using Amazon Nova AI.
+Returns structured fit analysis with score, strengths, gaps, and risk level.
+
+```json
+{
+  "candidateId": "uuid-here",
+  "resume": "3 years Python, PyTorch, published NeurIPS paper...",
+  "jobDescription": "ML Engineer: Python, PyTorch, 2+ years production ML..."
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "candidateId": "uuid-here",
+  "fit_score": 78,
+  "strengths": ["Strong Python and PyTorch skills"],
+  "gaps": ["No production ML deployment experience"],
+  "risk_level": "medium",
+  "summary": "Solid academic ML profile..."
+}
+```
 
 ### `GET /api/prompt/templates`
 
@@ -116,36 +144,43 @@ docker run -p 3001:3001 -e GEMINI_API_KEY=your-key llm-prompt-service
 
 ## Environment Variables
 
-| Variable          | Required | Default                  | Description                   |
-| ----------------- | -------- | ------------------------ | ----------------------------- |
-| `PORT`            | No       | `3001`                   | Server port                   |
-| `GEMINI_API_KEY`  | **Yes**  | —                        | Google Gemini API key         |
-| `REDIS_URL`       | No       | `redis://localhost:6379` | Redis connection URL          |
-| `REDIS_CACHE_TTL` | No       | `3600`                   | Cache TTL in seconds (1 hour) |
-| `CORS_ORIGINS`    | No       | `http://localhost:3000`  | Allowed CORS origins          |
-| `NODE_ENV`        | No       | `development`            | Environment mode              |
+| Variable                | Required | Default                  | Description                      |
+| ----------------------- | -------- | ------------------------ | -------------------------------- |
+| `PORT`                  | No       | `3001`                   | Server port                      |
+| `AWS_ACCESS_KEY_ID`     | **Yes**  | —                        | AWS IAM key for Bedrock (Nova)   |
+| `AWS_SECRET_ACCESS_KEY` | **Yes**  | —                        | AWS IAM secret for Bedrock       |
+| `AWS_REGION`            | No       | `us-east-1`              | AWS region with Bedrock access   |
+| `GEMINI_API_KEY`        | **Yes**  | —                        | Google Gemini API key (fallback) |
+| `REDIS_URL`             | No       | `redis://localhost:6379` | Redis connection URL             |
+| `REDIS_CACHE_TTL`       | No       | `3600`                   | Cache TTL in seconds (1 hour)    |
+| `CORS_ORIGINS`          | No       | `http://localhost:3000`  | Allowed CORS origins             |
+| `NODE_ENV`              | No       | `development`            | Environment mode                 |
 
 ## Project Structure
 
 ```
 src/
 ├── index.ts                # Entry point, Redis init, graceful shutdown
-├── app.ts                  # Express app setup
+├── app.ts                  # Express app setup, route mounting
 ├── lib/
-│   ├── gemini.ts           # Gemini AI client (text + JSON)
+│   ├── nova.ts             # Amazon Nova client (Bedrock Runtime SDK)
+│   ├── gemini.ts           # Gemini AI client (text + JSON, fallback)
 │   ├── prompt-formatter.ts # Deterministic prompt builder
 │   ├── prompt-templates.ts # Template registry (6 built-in)
+│   ├── auth.ts             # Auth helpers
 │   └── redis.ts            # Optional Redis cache layer
 └── routes/
     ├── health.ts           # Health check endpoint
-    └── prompt.ts           # /run, /raw, /templates endpoints
+    ├── score.ts            # POST /api/score — candidate scoring (Nova)
+    └── prompt.ts           # /run, /raw, /templates endpoints (Gemini)
 ```
 
 ## Tech Stack
 
 - **Runtime**: Node.js 22 (Alpine)
-- **Framework**: Express
-- **AI Model**: Google Gemini 2.0 Flash
+- **Framework**: Express 5
+- **AI Models**: Amazon Nova Lite (primary, via Bedrock) + Google Gemini 2.0 Flash (fallback)
+- **AWS SDK**: `@aws-sdk/client-bedrock-runtime`
 - **Cache**: Redis 7 (optional, via Docker Compose)
 - **Validation**: Zod
 - **Language**: TypeScript (NodeNext modules)

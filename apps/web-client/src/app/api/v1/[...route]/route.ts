@@ -1,13 +1,12 @@
 /**
- * Next.js App Router — Hono Mobile API catch-all
+ * Next.js App Router — Hono Public API v1 catch-all
  *
- * Delegates all /api/mobile/* requests to the Hono app.
+ * Delegates all /api/v1/* requests to the Hono app.
  */
 
 import { handle } from "hono/vercel";
 import app from "@/server/hono/app";
 
-// Use Node.js runtime for full multipart/formData support
 export const runtime = "nodejs";
 
 export const GET = handle(app);

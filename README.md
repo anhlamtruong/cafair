@@ -1,11 +1,11 @@
-# CaFair — Full-Stack Starter Template
+# CaFair — AI-Powered Career Fair Platform
 
-A monorepo starter with theming, auth, dual APIs, database, and an LLM prompt service — ready to build on.
+A monorepo for the CaFair recruiter dashboard with theming, auth, dual APIs, database, and an AI scoring service — built for the Amazon Nova AI Hackathon 2026.
 
 ## Stack
 
 - **Web Client**: Next.js 16 + TypeScript + tRPC + Hono + Drizzle ORM + Clerk Auth + Tailwind CSS v4 + shadcn/ui
-- **LLM Service**: Express + TypeScript + Google Gemini AI + Redis
+- **LLM Service**: Express + TypeScript + Amazon Nova Lite (Bedrock) + Google Gemini (fallback) + Redis
 - **Database**: Supabase (PostgreSQL) with Row Level Security
 - **Theme Engine**: 20+ presets, live editor, Zustand store, View Transitions API
 
@@ -53,6 +53,7 @@ Required keys:
 - `CLERK_SECRET_KEY` / `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
 - `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`
 - `GEMINI_API_KEY`
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` (for Nova scoring)
 
 ### 3. Start Supabase (Local)
 
@@ -88,19 +89,24 @@ npm run dev:llm
 | `db:migrate`  | Run database migrations         |
 | `db:push`     | Push schema changes (dev only)  |
 | `db:studio`   | Open Drizzle Studio             |
+| `db:seed`     | Seed database with sample data  |
+| `db:reset`    | Delete all data and re-seed     |
 | `supa:start`  | Start local Supabase            |
 | `supa:stop`   | Stop local Supabase             |
 
 ## Documentation
 
-| Doc                            | What it covers                           |
-| ------------------------------ | ---------------------------------------- |
-| `ARCHITECTURE.md`              | System diagrams, data flows, port map    |
-| `SYSTEM_DESIGN.md`             | Developer guide — adding services & APIs |
-| `apps/llm/README.md`           | LLM service API, templates, Docker setup |
-| `src/docs/TRPC_USAGE_GUIDE.md` | tRPC + TanStack Query patterns           |
-| `src/docs/MOBILE_CLIENT.md`    | Hono REST API for mobile clients         |
-| `src/services/theme/README.md` | Theme engine setup & customization       |
+| Doc                             | What it covers                               |
+| ------------------------------- | -------------------------------------------- |
+| `ARCHITECTURE.md`               | System diagrams, data flows, port map        |
+| `SYSTEM_DESIGN.md`              | Developer guide — adding services & APIs     |
+| `THEME-DEFINITION.md`           | Theme design contract for designers          |
+| `apps/llm/README.md`            | LLM service API, Nova + Gemini, Docker setup |
+| `src/docs/BACKEND_API_GUIDE.md` | Recruiter tRPC procedures, Nova scoring flow |
+| `src/docs/TRPC_USAGE_GUIDE.md`  | tRPC + TanStack Query patterns               |
+| `src/docs/MOBILE_CLIENT.md`     | Hono REST API for mobile clients             |
+| `src/docs/THEME_DEFINITIONS.md` | CSS variable → Tailwind class reference      |
+| `src/services/theme/README.md`  | Theme engine setup & customization           |
 
 ## Auth Flow
 

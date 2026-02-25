@@ -13,6 +13,7 @@ import {
   Settings,
   Zap,
   Database,
+  Play,
 } from "lucide-react";
 
 const navItems = [
@@ -22,6 +23,7 @@ const navItems = [
   { label: "Candidates", href: "/recruiter/candidates", icon: Users },
   { label: "Follow-ups", href: "/recruiter/follow-ups", icon: Send },
   { label: "Pipeline", href: "/recruiter/pipeline", icon: Kanban },
+  { label: "Demo", href: "/recruiter/demo", icon: Play },
 ];
 
 export function Sidebar() {

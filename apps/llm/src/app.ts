@@ -9,6 +9,7 @@ import express from "express";
 import cors from "cors";
 import healthRouter from "./routes/health.js";
 import promptRouter from "./routes/prompt.js";
+import scoreRouter from "./routes/score.js";
 
 const app = express();
 
@@ -32,6 +33,7 @@ if (process.env.NODE_ENV === "development") {
 // Routes
 app.use("/api/health", healthRouter);
 app.use("/api/prompt", promptRouter);
+app.use("/api/score", scoreRouter);
 
 // Error handler
 app.use(

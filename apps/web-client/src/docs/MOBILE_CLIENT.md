@@ -6,16 +6,18 @@
 
 ## Overview
 
-The Hono REST API is available at `/api/hono/*` and provides standard JSON
-endpoints for non-TypeScript clients (iOS, Android, 3rd-party services).
+The Hono REST API is available at `/api/v1/*` (primary) and `/api/mobile/*`
+(compatibility alias) and provides standard JSON endpoints for non-TypeScript
+clients (iOS, Android, 3rd-party services).
 
 ```
 Mobile / External Client
        │
        │  Authorization: Bearer <clerk-session-jwt>
+       │  OR x-api-key: <api-key>
        │
        ▼
-  /api/hono/*  →  Hono Router  →  Drizzle ORM  →  Supabase (RLS)
+  /api/v1/*  →  Hono Router  →  Drizzle ORM  →  Supabase (RLS)
 ```
 
 All endpoints share the same database layer and RLS policies as tRPC.
@@ -30,7 +32,14 @@ Every request must include a valid Clerk session token:
 Authorization: Bearer <clerk_session_jwt>
 ```
 
+For service integrations, API key authentication is also supported via:
+
+```
+x-api-key: <api-key>
+```
+
 Obtain this token via Clerk SDKs:
+
 - **React Native / Expo**: `@clerk/expo` → `useAuth().getToken()`
 - **Swift**: `@clerk/clerk-ios` → `Clerk.shared.session?.getToken()`
 - **Kotlin**: `@clerk/clerk-android` → `clerkClient.session.getToken()`
@@ -40,10 +49,12 @@ Obtain this token via Clerk SDKs:
 ## Base URL
 
 ```
-https://<your-domain>/api/hono
+https://<your-domain>/api/v1
 ```
 
-Local development: `http://localhost:3000/api/hono`
+Local development: `http://localhost:3000/api/v1`
+
+Compatibility alias: `http://localhost:3000/api/mobile`
 
 ---
 
@@ -51,31 +62,31 @@ Local development: `http://localhost:3000/api/hono`
 
 ### Users
 
-| Method | Path         | Description        |
-| ------ | ------------ | ------------------ |
-| GET    | /users/me    | Get current user   |
-| PUT    | /users/me    | Update profile     |
+| Method | Path      | Description      |
+| ------ | --------- | ---------------- |
+| GET    | /users/me | Get current user |
+| PATCH  | /users/me | Update profile   |
 
 ### Uploads
 
-| Method | Path           | Description        |
-| ------ | -------------- | ------------------ |
-| POST   | /uploads/file  | Upload a file      |
-| GET    | /uploads/files | List user files    |
-| DELETE | /uploads/files | Delete files       |
+| Method | Path           | Description     |
+| ------ | -------------- | --------------- |
+| POST   | /uploads/file  | Upload a file   |
+| GET    | /uploads/files | List user files |
+| DELETE | /uploads/files | Delete files    |
 
 ### Examples
 
-| Method | Path       | Description          |
-| ------ | ---------- | -------------------- |
-| GET    | /examples  | List example items   |
-| POST   | /examples  | Create example item  |
+| Method | Path      | Description         |
+| ------ | --------- | ------------------- |
+| GET    | /examples | List example items  |
+| POST   | /examples | Create example item |
 
 ### Health
 
-| Method | Path    | Description    |
-| ------ | ------- | -------------- |
-| GET    | /health | Health check   |
+| Method | Path    | Description  |
+| ------ | ------- | ------------ |
+| GET    | /health | Health check |
 
 ---
 
