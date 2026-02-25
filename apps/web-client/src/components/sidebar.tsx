@@ -13,6 +13,7 @@ import {
   Settings,
   Zap,
   Database,
+  Play,
 } from "lucide-react";
 
 const navItems = [
@@ -22,21 +23,26 @@ const navItems = [
   { label: "Candidates", href: "/recruiter/candidates", icon: Users },
   { label: "Follow-ups", href: "/recruiter/follow-ups", icon: Send },
   { label: "Pipeline", href: "/recruiter/pipeline", icon: Kanban },
+  { label: "Demo", href: "/recruiter/demo", icon: Play },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-[200px] flex-col bg-sidebar-bg border-r border-sidebar-border">
+    <aside className="fixed inset-y-0 left-0 z-40 flex w-50 flex-col bg-sidebar-bg border-r border-sidebar-border">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 py-5">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-sm">
           <Zap className="h-4 w-4 text-primary-foreground" />
         </div>
         <div className="flex flex-col">
-          <span className="text-sm font-bold text-foreground leading-tight">FairSignal</span>
-          <span className="text-[10px] text-sidebar-muted leading-tight">Recruiter Copilot</span>
+          <span className="text-sm font-bold text-foreground leading-tight">
+            FairSignal
+          </span>
+          <span className="text-[10px] text-sidebar-muted leading-tight">
+            Recruiter Copilot
+          </span>
         </div>
       </div>
 
@@ -59,7 +65,7 @@ export function Sidebar() {
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors",
                 active
                   ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
               )}
             >
               <item.icon className="h-4 w-4 shrink-0" />
@@ -77,7 +83,7 @@ export function Sidebar() {
             "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors",
             pathname === "/dev"
               ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
           )}
         >
           <Database className="h-4 w-4 shrink-0" />
@@ -89,7 +95,7 @@ export function Sidebar() {
             "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors",
             pathname === "/recruiter/settings"
               ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
           )}
         >
           <Settings className="h-4 w-4 shrink-0" />

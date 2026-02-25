@@ -131,10 +131,15 @@ services/your-feature/
 
 Current tables:
 
-| Table      | Description                   |
-| ---------- | ----------------------------- |
-| `users`    | Clerk-synced user records     |
-| `examples` | Example items (for reference) |
+| Table               | Description                                  |
+| ------------------- | -------------------------------------------- |
+| `users`             | Clerk-synced user records                    |
+| `examples`          | Example items (for reference)                |
+| `events`            | Career fair events                           |
+| `job_roles`         | Job openings linked to events                |
+| `candidates`        | Pipeline candidates with scores, stage, lane |
+| `evidence`          | Resume/code links attached to candidates     |
+| `recruiter_actions` | Follow-up actions (email, schedule, reject)  |
 
 All tables use `text("user_id")` referencing Clerk user IDs.
 RLS is enforced via `secure-client.ts` which sets `request.jwt.claims` before each query.
@@ -194,24 +199,29 @@ export default async function Page() {
 
 ## 5. Hono API (REST)
 
-REST endpoints for mobile / external clients at `/api/hono/*`.
+REST endpoints for mobile / external clients at `/api/v1/*`.
+
+`/api/mobile/*` remains available as a compatibility alias.
 
 ### Adding a route
 
 ```ts
 // src/server/hono/routes/your-feature.ts
 import { Hono } from "hono";
-import { getAuth } from "@hono/clerk-auth";
-import { getSecureDb } from "@/db/secure-client";
+import type { AuthEnv } from "../middleware";
 import { yourTable } from "@/services/your-feature/schema";
+import { db } from "@/db";
+import { eq } from "drizzle-orm";
 
-const app = new Hono();
+const app = new Hono<AuthEnv>();
 
 app.get("/", async (c) => {
-  const auth = getAuth(c);
-  if (!auth?.userId) return c.json({ error: "Unauthorized" }, 401);
-  const secureDb = await getSecureDb({ token: auth.sessionClaims });
-  const items = await secureDb.rls((tx) => tx.select().from(yourTable));
+  const userId = c.var.userId;
+  const items = await db
+    .select()
+    .from(yourTable)
+    .where(eq(yourTable.userId, userId));
+
   return c.json({ data: items });
 });
 
@@ -222,14 +232,26 @@ Mount in `src/server/hono/app.ts`:
 
 ```ts
 import yourFeatureRoutes from "./routes/your-feature";
-honoApp.route("/your-feature", yourFeatureRoutes);
+app.route("/your-feature", yourFeatureRoutes);
 ```
 
 ---
 
 ## 6. LLM Integration
 
-The LLM service at `:3001` provides:
+The LLM service at `:3001` provides two AI models:
+
+- **Amazon Nova Lite** (via AWS Bedrock) — candidate scoring at `POST /api/score`
+- **Google Gemini Flash** (fallback) — prompt templates at `/api/prompt/*`
+
+### Candidate Scoring (Nova)
+
+- `POST /api/score` — score a resume against a job description
+
+The web-client calls this via the `scoreCandidate` tRPC mutation, which orchestrates
+the LLM request and persists results. See `src/docs/BACKEND_API_GUIDE.md` for usage.
+
+### Prompt Templates (Gemini)
 
 - `POST /api/prompt/run` — run a registered template
 - `POST /api/prompt/raw` — run a custom prompt

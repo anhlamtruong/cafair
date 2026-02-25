@@ -27,9 +27,10 @@
 │  │  Clerk Middleware     │  │  Next.js API Routes                   │         │
 │  │  (proxy.ts)           │  │                                       │         │
 │  │                       │  │  /api/trpc/*  →  tRPC Fetch Adapter   │         │
-│  │  • Auth guard         │──│  /api/hono/*  →  Hono REST Adapter    │         │
-│  │  • JWT injection      │  │  /api/health  →  Hono health check    │         │
-│  │  • Route matching     │  │                                       │         │
+│  │  • Auth guard         │──│  /api/v1/*    →  Hono REST Adapter    │         │
+│  │  • JWT injection      │  │  /api/mobile/* → Hono compat alias    │         │
+│  │  • Route matching     │  │  /api/health  →  Hono health check    │         │
+│  │                       │  │                                       │         │
 │  └──────────────────────┘  └──────────┬──────────────┬─────────────┘         │
 │                                       │              │                       │
 │                                  tRPC │         Hono │                       │
@@ -81,29 +82,29 @@
 │                         LLM SERVICE (Express :3001)                          │
 │                                                                              │
 │   ┌──────────────────────┐     ┌─────────────────────────────────┐          │
-│   │  POST /api/prompt/run │     │  Prompt Formatter               │          │
-│   │  POST /api/prompt/raw │────▶│                                 │          │
-│   │  GET  /api/prompt/    │     │  • Role, Task, Rules, Input     │          │
-│   │       templates       │     │  • Deterministic structure      │          │
-│   │  GET  /api/health     │     │  • Template registry (6 built-in)│          │
-│   └──────────────────────┘     └──────────┬──────────────────────┘          │
-│                                           │                                  │
-│                           ┌───────────────┼────────────────┐                │
-│                           │               │                │                │
-│                           ▼               ▼                │                │
-│                ┌─────────────────┐  ┌────────────┐         │                │
-│                │  Redis :6379     │  │  Gemini AI  │         │                │
-│                │  (optional cache)│  │  2.0 Flash  │         │                │
-│                │                 │  │             │         │                │
-│                │  • SHA-256 key  │  │  • Text gen  │         │                │
-│                │  • TTL eviction │  │  • JSON gen  │         │                │
-│                │  • 128MB cap    │  │  • 4096 tok  │         │                │
-│                └─────────────────┘  └─────────────┘         │                │
+│   │  POST /api/score      │     │  Prompt Formatter               │          │
+│   │  POST /api/prompt/run │────▶│                                 │          │
+│   │  POST /api/prompt/raw │     │  • Role, Task, Rules, Input     │          │
+│   │  GET  /api/prompt/    │     │  • Deterministic structure      │          │
+│   │       templates       │     │  • Template registry (6 built-in)│          │
+│   │  GET  /api/health     │     └──────────┬──────────────────────┘          │
+│   └──────────────────────┘                 │                                  │
+│                                ┌───────────┼───────────────────┐             │
+│                                │           │                   │             │
+│                                ▼           ▼                   ▼             │
+│                 ┌─────────────────┐ ┌─────────────┐  ┌──────────────────┐   │
+│                 │  Redis :6379     │ │  Nova Lite   │  │  Gemini 2.0      │   │
+│                 │  (optional cache)│ │  (Bedrock)   │  │  Flash (fallback)│   │
+│                 │                 │ │              │  │                  │   │
+│                 │  • SHA-256 key  │ │  • /api/score│  │  • /api/prompt/* │   │
+│                 │  • TTL eviction │ │  • JSON gen  │  │  • Text gen      │   │
+│                 │  • 128MB cap    │ │  • 4096 tok  │  │  • JSON gen      │   │
+│                 └─────────────────┘ └─────────────┘  └──────────────────┘   │
 │                        ▲                    │               │                │
 │                        │                    │               │                │
-│                        └────────────────────┘               │                │
-│                         cache miss → call Gemini            │                │
-│                         cache hit  → skip Gemini            │                │
+│                        └────────────────────┘───────────────┘                │
+│                         cache miss → call Nova / Gemini                      │
+│                         cache hit  → skip AI call                            │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -162,7 +163,7 @@
 ```
    Mobile App (Swift / Kotlin / React Native)
        │
-       │  GET /api/hono/users/me
+         │  GET /api/v1/users/me
        │  Authorization: Bearer <clerk-session-token>
        │
        ▼
@@ -174,7 +175,7 @@
        ▼
    Hono Router
        │
-       │  clerkMiddleware()  →  getAuth(c)  →  userId
+       │  clerk middleware  →  c.var.userId
        │
        │  Internally calls the SAME Drizzle/Supabase layer:
        │  ┌────────────────────────────────────────────────┐
@@ -193,12 +194,18 @@
 
 ### Why Hono for Mobile?
 
-| Concern           | tRPC                                 | Hono (REST)                           |
-| ----------------- | ------------------------------------ | ------------------------------------- |
-| Type safety       | ✅ End-to-end (TS only)              | ✅ Zod validation on server           |
-| Mobile clients    | ❌ Needs TS codegen / custom adapter | ✅ Standard JSON REST — any language  |
-| Middleware         | ✅ tRPC middleware                    | ✅ Hono middleware (CORS, auth, etc.) |
-| Performance        | ✅ Batched calls                      | ✅ Lightweight, edge-ready            |
+| Concern        | tRPC                                 | Hono (REST)                           |
+| -------------- | ------------------------------------ | ------------------------------------- |
+| Type safety    | ✅ End-to-end (TS only)              | ✅ Zod validation on server           |
+| Mobile clients | ❌ Needs TS codegen / custom adapter | ✅ Standard JSON REST — any language  |
+| Middleware     | ✅ tRPC middleware                   | ✅ Hono middleware (CORS, auth, etc.) |
+| Performance    | ✅ Batched calls                     | ✅ Lightweight, edge-ready            |
+
+### API Surface Boundary
+
+- tRPC (`/api/trpc/*`) is the internal BFF for web clients.
+- Hono (`/api/v1/*`) is the versioned REST contract for external consumers.
+- `/api/mobile/*` is maintained as a compatibility alias during migration.
 
 ---
 
@@ -241,11 +248,11 @@ Both API layers share the same Drizzle DB layer and Clerk auth context.
        │
        ├── HIT  → return cached response (< 1ms)
        │
-       └── MISS → call Gemini
+       └── MISS → call Nova (scoring) or Gemini (prompt templates)
                      │
-                     │  POST generativelanguage.googleapis.com
-                     │  model: gemini-2.5-flash
-                     │  prompt: <formatted string>
+                     │  Nova: InvokeModel via Bedrock SDK
+                     │  Gemini: POST generativelanguage.googleapis.com
+                     │  model: amazon.nova-lite-v1:0 / gemini-2.5-flash
                      │
                      ▼
                   Gemini Response
@@ -322,11 +329,11 @@ Both API layers share the same Drizzle DB layer and Clerk auth context.
 │   │ (cache) │    │
 │   └─────────┘    │
 │        │         │
-│   ┌────▼────┐    │
-│   │ Gemini  │    │
-│   │ 2.0     │    │
-│   │ Flash   │    │
-│   └─────────┘    │
+│  ┌─────▼──────┐  │
+│  │Nova / Gemini│  │
+│  │(Bedrock +   │  │
+│  │ googleapis) │  │
+│  └────────────┘  │
 └──────────────────┘
 ```
 
@@ -334,17 +341,17 @@ Both API layers share the same Drizzle DB layer and Clerk auth context.
 
 ## Service Responsibility Matrix
 
-| Layer          | Technology       | Responsibility                                                  |
-| -------------- | ---------------- | --------------------------------------------------------------- |
-| **Auth**       | Clerk            | Session management, JWT issuance (web + mobile), user identity  |
-| **Web API**    | tRPC             | Type-safe procedures for the Next.js React app                  |
-| **REST API**   | Hono             | JSON REST endpoints for mobile clients & external consumers     |
-| **ORM**        | Drizzle          | Type-safe SQL queries, schema definitions, migration generation |
-| **Database**   | Supabase (PG)    | Persistent storage, Row Level Security via JWT claims           |
-| **AI Gateway** | Express (LLM)    | Stateless prompt formatting, template registry, response cache  |
-| **AI Cache**   | Redis            | Deduplicate identical prompts, optional TTL-based eviction      |
-| **AI Model**   | Gemini 2.0 Flash | Text & JSON generation from structured prompts                  |
-| **Migrations** | Drizzle Kit      | Schema diffing → SQL migration files → `supabase/migrations/`   |
+| Layer          | Technology         | Responsibility                                                  |
+| -------------- | ------------------ | --------------------------------------------------------------- |
+| **Auth**       | Clerk              | Session management, JWT issuance (web + mobile), user identity  |
+| **Web API**    | tRPC               | Type-safe procedures for the Next.js React app                  |
+| **REST API**   | Hono               | JSON REST endpoints for mobile clients & external consumers     |
+| **ORM**        | Drizzle            | Type-safe SQL queries, schema definitions, migration generation |
+| **Database**   | Supabase (PG)      | Persistent storage, Row Level Security via JWT claims           |
+| **AI Gateway** | Express (LLM)      | Stateless prompt formatting, candidate scoring, response cache  |
+| **AI Cache**   | Redis              | Deduplicate identical prompts, optional TTL-based eviction      |
+| **AI Model**   | Nova Lite + Gemini | Nova (candidate scoring via Bedrock), Gemini (prompt templates) |
+| **Migrations** | Drizzle Kit        | Schema diffing → SQL migration files → `supabase/migrations/`   |
 
 ---
 

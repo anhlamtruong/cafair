@@ -1,69 +1,85 @@
 /**
- * Hono Mobile API — Main Application
+ * Hono API — Shared Root Application
  *
- * REST API layer for mobile clients (React Native / Expo / Flutter).
- * Mirrors tRPC procedures as standard HTTP endpoints.
+ * Single Hono root serving both:
+ * - REST endpoints (/api/v1/*, /api/mobile/* compatibility)
+ * - tRPC endpoint (/api/trpc/*)
  *
- * Base path: /api/mobile
- * Auth: Clerk JWT via Authorization: Bearer <token>
- *
- * Structure:
- *   /api/mobile/users/*
- *   /api/mobile/examples/*
- *   /api/mobile/uploads/*
+ * Provides one middleware chain for logging/CORS/error handling.
  */
 
+import { trpcServer } from "@hono/trpc-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { HTTPException } from "hono/http-exception";
 
+import { createTRPCContext } from "@/server/init";
+import { appRouter } from "@/server/routers/app";
 import { clerk, requireAuth, type AuthEnv } from "./middleware";
 import usersRoutes from "./routes/users";
 import examplesRoutes from "./routes/examples";
 import uploadsRoutes from "./routes/uploads";
 
-// ── App Factory ─────────────────────────────────────────────────────────
+const app = new Hono<AuthEnv>();
 
-const app = new Hono<AuthEnv>().basePath("/api/mobile");
+const mountRestApi = ({
+  basePath,
+  service,
+}: {
+  basePath: "/api/v1" | "/api/mobile";
+  service: string;
+}) => {
+  app.get(`${basePath}/health`, (c) =>
+    c.json({
+      status: "ok",
+      service,
+      basePath,
+      timestamp: new Date().toISOString(),
+    }),
+  );
 
-// ── Global Middleware ───────────────────────────────────────────────────
+  app.use(`${basePath}/*`, clerk);
+  app.use(`${basePath}/*`, requireAuth);
+
+  app.route(`${basePath}/users`, usersRoutes);
+  app.route(`${basePath}/examples`, examplesRoutes);
+  app.route(`${basePath}/uploads`, uploadsRoutes);
+};
 
 app.use("*", logger());
 
 app.use(
   "*",
   cors({
-    origin: "*", // Mobile apps — allow all origins
+    origin: "*",
     allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: ["Content-Type", "Authorization", "x-api-key"],
     maxAge: 86400,
   }),
 );
 
-// Health check (no auth)
-app.get("/health", (c) =>
-  c.json({
-    status: "ok",
-    service: "mobile-api",
-    timestamp: new Date().toISOString(),
+mountRestApi({
+  basePath: "/api/v1",
+  service: "public-api-v1",
+});
+
+mountRestApi({
+  basePath: "/api/mobile",
+  service: "mobile-api-compat",
+});
+
+app.use(
+  "/api/trpc/*",
+  trpcServer({
+    endpoint: "/api/trpc",
+    router: appRouter,
+    createContext: async () => createTRPCContext(),
   }),
 );
 
-// Auth middleware for all other routes
-app.use("*", clerk);
-app.use("*", requireAuth);
-
-// ── Route Groups ────────────────────────────────────────────────────────
-
-app.route("/users", usersRoutes);
-app.route("/examples", examplesRoutes);
-app.route("/uploads", uploadsRoutes);
-
-// ── Error Handler ───────────────────────────────────────────────────────
-
 app.onError((err, c) => {
-  console.error("[mobile-api]", err);
+  console.error("[api-root]", err);
 
   if (err instanceof HTTPException) {
     return c.json({ error: err.message }, err.status);
@@ -75,9 +91,6 @@ app.onError((err, c) => {
   );
 });
 
-// ── 404 ─────────────────────────────────────────────────────────────────
-
 app.notFound((c) => c.json({ error: "Not found", path: c.req.path }, 404));
 
-export { app };
 export default app;
