@@ -1,6 +1,7 @@
 "use client";
 import { useTRPC } from "@/trpc/client";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import {
   FileText,
   Mic,
@@ -84,6 +85,7 @@ function RiskBadge({ level }: { level: string | null }) {
 // ─── Main Page ───────────────────────────────────────────
 export default function CandidatesPage() {
   const trpc = useTRPC();
+  const router = useRouter();
   const { data: candidates, isLoading } = useQuery(
     trpc.recruiter.getCandidates.queryOptions()
   );
@@ -151,10 +153,18 @@ export default function CandidatesPage() {
           </thead>
           <tbody>
             {candidates?.map((c, i) => (
-              <tr key={c.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
+              <tr
+                key={c.id}
+                onClick={() => router.push(`/recruiter/candidates/${c.id}`)}
+                className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+              >
                 {/* Checkbox */}
                 <td className="pl-4 pr-1 py-3">
-                  <input type="checkbox" className="w-3.5 h-3.5 rounded border-border accent-primary" />
+                  <input
+                    type="checkbox"
+                    className="w-3.5 h-3.5 rounded border-border accent-primary"
+                    onClick={(e) => e.stopPropagation()}
+                  />
                 </td>
 
                 {/* Candidate */}
@@ -165,7 +175,7 @@ export default function CandidatesPage() {
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                         <span className="text-xs font-semibold text-primary">
-                          {c.name.split(" ").map(n => n[0]).slice(0, 2).join("")}
+                          {c.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("")}
                         </span>
                       </div>
                     )}
