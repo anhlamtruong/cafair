@@ -1,7 +1,8 @@
 "use client";
 import { useTRPC } from "@/trpc/client";
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import {
   FileText,
   Mic,
@@ -32,19 +33,37 @@ function EvidenceTag({ type }: { type: string }) {
 
 // ─── Fit Score Bar ───────────────────────────────────────
 function FitScoreBar({ score }: { score: number }) {
-  const color = score >= 90 ? "bg-primary" : score >= 80 ? "bg-primary" : score >= 70 ? "bg-yellow-500" : "bg-red-500";
+  const color =
+    score >= 90
+      ? "bg-primary"
+      : score >= 80
+      ? "bg-primary"
+      : score >= 70
+      ? "bg-yellow-500"
+      : "bg-red-500";
   return (
     <div className="flex items-center gap-2">
       <div className="w-16 h-2 bg-border rounded-full overflow-hidden">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${score}%` }} />
+        <div
+          className={`h-full rounded-full ${color}`}
+          style={{ width: `${score}%` }}
+        />
       </div>
-      <span className="text-sm font-bold text-foreground tabular-nums">{score}</span>
+      <span className="text-sm font-bold text-foreground tabular-nums">
+        {score}
+      </span>
     </div>
   );
 }
 
 // ─── Stage + Lane Badge ─────────────────────────────────
-function StageLaneBadge({ stage, lane }: { stage: string | null; lane: string | null }) {
+function StageLaneBadge({
+  stage,
+  lane,
+}: {
+  stage: string | null;
+  lane: string | null;
+}) {
   const stageLabel = stage === "day1" ? "Day 1" : stage ?? "fair";
   const laneLabel = lane?.replace(/_/g, " ") ?? "";
 
@@ -56,9 +75,15 @@ function StageLaneBadge({ stage, lane }: { stage: string | null; lane: string | 
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs text-muted-foreground capitalize">{stageLabel}</span>
+      <span className="text-xs text-muted-foreground capitalize">
+        {stageLabel}
+      </span>
       {lane && (
-        <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium border capitalize w-fit ${laneColors[lane ?? ""] ?? laneColors.redirect}`}>
+        <span
+          className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium border capitalize w-fit ${
+            laneColors[lane ?? ""] ?? laneColors.redirect
+          }`}
+        >
           <Star className="w-2.5 h-2.5" />
           {laneLabel}
         </span>
@@ -75,7 +100,11 @@ function RiskBadge({ level }: { level: string | null }) {
     high: "text-red-600",
   };
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-medium capitalize ${map[level ?? "low"] ?? map.low}`}>
+    <span
+      className={`inline-flex items-center gap-1 text-xs font-medium capitalize ${
+        map[level ?? "low"] ?? map.low
+      }`}
+    >
       <ShieldCheck className="w-3.5 h-3.5" />
       {level}
     </span>
@@ -86,9 +115,21 @@ function RiskBadge({ level }: { level: string | null }) {
 export default function CandidatesPage() {
   const trpc = useTRPC();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // ─── Filter state ────────────────────────────────────
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [riskFilter, setRiskFilter] = useState("all");
+
+  // ─── Search from URL ─────────────────────────────────
+  const search = searchParams.get("search") ?? "";
+
+  // ─── Data fetching ────────────────────────────────────
   const { data: candidates, isLoading } = useQuery(
     trpc.recruiter.getCandidates.queryOptions()
   );
+
+  const { data: roles } = useQuery(trpc.recruiter.getRoles.queryOptions());
 
   if (isLoading) {
     return (
@@ -98,22 +139,58 @@ export default function CandidatesPage() {
     );
   }
 
+  // ─── Filtering logic ──────────────────────────────────
+  const filtered = candidates?.filter((c) => {
+    const matchesSearch = search
+      ? c.name.toLowerCase().includes(search.toLowerCase())
+      : true;
+    const matchesRole =
+      roleFilter === "all" || c.roleId === roleFilter;
+    const matchesRisk =
+      riskFilter === "all" || c.riskLevel === riskFilter;
+    return matchesSearch && matchesRole && matchesRisk;
+  });
+
   // Simulate owners & last touch
   const owners = ["Jamie R.", "Sam T."];
   const touchLabels = [
-    "Offer being prepared", "Screen completed", "Research interview completed",
-    "Interview scheduled", "Pre-screen passed", "Director interview scheduled",
-    "Offer extended", "Application reviewed", "Technical screen completed",
-    "Registered", "Pre-screen completed", "Verification complete",
-    "Portfolio review completed", "Interview scheduled", "Application reviewed",
+    "Offer being prepared",
+    "Screen completed",
+    "Research interview completed",
+    "Interview scheduled",
+    "Pre-screen passed",
+    "Director interview scheduled",
+    "Offer extended",
+    "Application reviewed",
+    "Technical screen completed",
+    "Registered",
+    "Pre-screen completed",
+    "Verification complete",
+    "Portfolio review completed",
+    "Interview scheduled",
+    "Application reviewed",
   ];
-  const timeLabels = ["4h ago", "2h ago", "1d ago", "5h ago", "1h ago", "6h ago", "1d ago", "8h ago", "3h ago", "3h ago", "1h ago", "4h ago", "1d ago", "3h ago", "2h ago"];
+  const timeLabels = [
+    "4h ago", "2h ago", "1d ago", "5h ago", "1h ago",
+    "6h ago", "1d ago", "8h ago", "3h ago", "3h ago",
+    "1h ago", "4h ago", "1d ago", "3h ago", "2h ago",
+  ];
   const nextActions = [
-    "Extend senior engineer offer", "Schedule final interview", "Final round with research team",
-    "Prepare interview panel", "Begin micro-screen", "Executive interview with CPO",
-    "Await response", "Schedule technical screen", "Schedule final interview",
-    "Invite to priority lane", "Technical deep-dive", "Schedule technical screen",
-    "Design challenge assignment", "Prepare panel", "Review application",
+    "Extend senior engineer offer",
+    "Schedule final interview",
+    "Final round with research team",
+    "Prepare interview panel",
+    "Begin micro-screen",
+    "Executive interview with CPO",
+    "Await response",
+    "Schedule technical screen",
+    "Schedule final interview",
+    "Invite to priority lane",
+    "Technical deep-dive",
+    "Schedule technical screen",
+    "Design challenge assignment",
+    "Prepare panel",
+    "Review application",
   ];
 
   return (
@@ -122,19 +199,52 @@ export default function CandidatesPage() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Candidates</h1>
-          <p className="text-sm text-muted-foreground">{candidates?.length ?? 0} candidates</p>
+          <p className="text-sm text-muted-foreground">
+            {filtered?.length ?? 0} candidates
+            {search && (
+              <span className="ml-1 text-primary">
+                matching "{search}"
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <select className="text-xs bg-secondary border border-border rounded-lg px-3 py-1.5 text-foreground">
-            <option>All Roles</option>
+          {/* All Roles filter — wired to real roles from DB */}
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="text-xs bg-secondary border border-border rounded-lg px-3 py-1.5 text-foreground"
+          >
+            <option value="all">All Roles</option>
+            {roles?.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.title}
+              </option>
+            ))}
           </select>
-          <select className="text-xs bg-secondary border border-border rounded-lg px-3 py-1.5 text-foreground">
-            <option>All Risk</option>
+
+          {/* All Risk filter — wired to riskLevel */}
+          <select
+            value={riskFilter}
+            onChange={(e) => setRiskFilter(e.target.value)}
+            className="text-xs bg-secondary border border-border rounded-lg px-3 py-1.5 text-foreground"
+          >
+            <option value="all">All Risk</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
           </select>
+
           <div className="flex items-center gap-0.5 bg-secondary border border-border rounded-lg px-1 py-0.5">
-            <button className="text-xs font-medium px-2.5 py-1 rounded bg-card text-foreground shadow-sm">List Mode</button>
-            <button className="text-xs font-medium px-2.5 py-1 rounded text-muted-foreground">Graph Mode</button>
-            <button className="text-xs font-medium px-2.5 py-1 rounded text-muted-foreground">Match View</button>
+            <button className="text-xs font-medium px-2.5 py-1 rounded bg-card text-foreground shadow-sm">
+              List Mode
+            </button>
+            <button className="text-xs font-medium px-2.5 py-1 rounded text-muted-foreground">
+              Graph Mode
+            </button>
+            <button className="text-xs font-medium px-2.5 py-1 rounded text-muted-foreground">
+              Match View
+            </button>
           </div>
         </div>
       </div>
@@ -144,98 +254,131 @@ export default function CandidatesPage() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-border">
-              {["", "Candidate", "Role(s)", "Fit Score", "Stage / Lane", "Last Touch", "Evidence", "Risk", "Owner", "Next Action", ""].map((h, i) => (
-                <th key={i} className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-3 uppercase tracking-wider first:pl-4 last:pr-4">
+              {[
+                "", "Candidate", "Role(s)", "Fit Score",
+                "Stage / Lane", "Last Touch", "Evidence",
+                "Risk", "Owner", "Next Action", "",
+              ].map((h, i) => (
+                <th
+                  key={i}
+                  className="text-left text-[10px] font-semibold text-muted-foreground px-3 py-3 uppercase tracking-wider first:pl-4 last:pr-4"
+                >
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {candidates?.map((c, i) => (
-              <tr
-                key={c.id}
-                onClick={() => router.push(`/recruiter/candidates/${c.id}`)}
-                className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
-              >
-                {/* Checkbox */}
-                <td className="pl-4 pr-1 py-3">
-                  <input
-                    type="checkbox"
-                    className="w-3.5 h-3.5 rounded border-border accent-primary"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </td>
-
-                {/* Candidate */}
-                <td className="px-3 py-3">
-                  <div className="flex items-center gap-2.5">
-                    {c.avatarUrl ? (
-                      <img src={c.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <span className="text-xs font-semibold text-primary">
-                          {c.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("")}
-                        </span>
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate max-w-[150px]">{c.name}</p>
-                      <p className="text-xs text-muted-foreground truncate max-w-[150px]">{c.school}</p>
-                    </div>
-                  </div>
-                </td>
-
-                {/* Role */}
-                <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{c.role}</td>
-
-                {/* Fit Score */}
-                <td className="px-3 py-3">
-                  <FitScoreBar score={c.fitScore ?? 0} />
-                </td>
-
-                {/* Stage / Lane */}
-                <td className="px-3 py-3">
-                  <StageLaneBadge stage={c.stage} lane={c.lane} />
-                </td>
-
-                {/* Last Touch */}
-                <td className="px-3 py-3">
-                  <p className="text-xs text-foreground">{touchLabels[i % touchLabels.length]}</p>
-                  <p className="text-[10px] text-muted-foreground">{timeLabels[i % timeLabels.length]}</p>
-                </td>
-
-                {/* Evidence */}
-                <td className="px-3 py-3">
-                  <div className="flex flex-wrap gap-1">
-                    <EvidenceTag type="resume" />
-                    <EvidenceTag type="screen" />
-                    <EvidenceTag type="code" />
-                    {i % 3 === 0 && <EvidenceTag type="essay" />}
-                  </div>
-                </td>
-
-                {/* Risk */}
-                <td className="px-3 py-3">
-                  <RiskBadge level={c.riskLevel} />
-                </td>
-
-                {/* Owner */}
-                <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                  {owners[i % owners.length]}
-                </td>
-
-                {/* Next Action */}
-                <td className="px-3 py-3 text-xs text-muted-foreground max-w-[160px] truncate">
-                  {nextActions[i % nextActions.length]}
-                </td>
-
-                {/* Arrow */}
-                <td className="pr-4 py-3">
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            {filtered?.length === 0 ? (
+              <tr>
+                <td colSpan={11} className="text-center py-12 text-sm text-muted-foreground">
+                  No candidates match your filters
                 </td>
               </tr>
-            ))}
+            ) : (
+              filtered?.map((c, i) => (
+                <tr
+                  key={c.id}
+                  onClick={() => router.push(`/recruiter/candidates/${c.id}`)}
+                  className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+                >
+                  {/* Checkbox */}
+                  <td className="pl-4 pr-1 py-3">
+                    <input
+                      type="checkbox"
+                      className="w-3.5 h-3.5 rounded border-border accent-primary"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </td>
+
+                  {/* Candidate */}
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2.5">
+                      {c.avatarUrl ? (
+                        <img
+                          src={c.avatarUrl}
+                          alt=""
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <span className="text-xs font-semibold text-primary">
+                            {c.name
+                              .split(" ")
+                              .map((n: string) => n[0])
+                              .slice(0, 2)
+                              .join("")}
+                          </span>
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate max-w-[150px]">
+                          {c.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate max-w-[150px]">
+                          {c.school}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Role */}
+                  <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                    {c.role}
+                  </td>
+
+                  {/* Fit Score */}
+                  <td className="px-3 py-3">
+                    <FitScoreBar score={c.fitScore ?? 0} />
+                  </td>
+
+                  {/* Stage / Lane */}
+                  <td className="px-3 py-3">
+                    <StageLaneBadge stage={c.stage} lane={c.lane} />
+                  </td>
+
+                  {/* Last Touch */}
+                  <td className="px-3 py-3">
+                    <p className="text-xs text-foreground">
+                      {touchLabels[i % touchLabels.length]}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {timeLabels[i % timeLabels.length]}
+                    </p>
+                  </td>
+
+                  {/* Evidence */}
+                  <td className="px-3 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      <EvidenceTag type="resume" />
+                      <EvidenceTag type="screen" />
+                      <EvidenceTag type="code" />
+                      {i % 3 === 0 && <EvidenceTag type="essay" />}
+                    </div>
+                  </td>
+
+                  {/* Risk */}
+                  <td className="px-3 py-3">
+                    <RiskBadge level={c.riskLevel} />
+                  </td>
+
+                  {/* Owner */}
+                  <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                    {owners[i % owners.length]}
+                  </td>
+
+                  {/* Next Action */}
+                  <td className="px-3 py-3 text-xs text-muted-foreground max-w-[160px] truncate">
+                    {nextActions[i % nextActions.length]}
+                  </td>
+
+                  {/* Arrow */}
+                  <td className="pr-4 py-3">
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
