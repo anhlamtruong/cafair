@@ -1,11 +1,29 @@
-//  agents/src/agents/atsPayload.ts
+// Path: agents/src/agents/atsPayload.ts
+//
+// ATS payload adapter (demo-ready, recruiter-side).
+// Converts triage + verify + microscreen outputs into an ATS-ready payload:
+// - stage suggestion
+// - tags
+// - structured note
+// - follow-up tasks
+// - email drafts
+// - Nova Act preview steps
+//
+// Works well with:
+// - buildCandidatePacket(...)
+// - novaActStartRun(...)
 
-
-import type { EvidenceItem, Lane, TriageResult } from "../types.ts";
+import type { Lane, TriageResult } from "../types.ts";
 import type { VerifyResult, VerifyAction } from "./verify.ts";
 import type { MicroScreenResult } from "./microscreen.ts";
 
-export type AtsStage = "NEW" | "SCREEN" | "INTERVIEW" | "OFFER" | "HOLD" | "REJECT";
+export type AtsStage =
+  | "NEW"
+  | "SCREEN"
+  | "INTERVIEW"
+  | "OFFER"
+  | "HOLD"
+  | "REJECT";
 
 export type AtsTaskType =
   | "FOLLOW_UP"
@@ -31,9 +49,10 @@ export interface AtsEmailDraft {
 }
 
 export interface NovaActStepPreview {
-  step: string;               // short UI label
-  details?: string;           // short explanation
+  step: string;
+  details?: string;
   status?: "Queued" | "Running" | "Success" | "Failed";
+  requiresApproval?: boolean;
 }
 
 export interface AtsUpdatePayload {
@@ -43,138 +62,287 @@ export interface AtsUpdatePayload {
   stage: AtsStage;
   tags: string[];
 
-  note: string;               // what gets pasted into ATS notes
+  note: string;
   tasks: AtsTask[];
 
-  emailDrafts: AtsEmailDraft[]; // recruiter can approve/send
-  actPreviewSteps: NovaActStepPreview[]; // what Nova Act will do in the ATS UI
+  emailDrafts: AtsEmailDraft[];
+  actPreviewSteps: NovaActStepPreview[];
+
+  summary: string;
 
   debug?: {
     lane: Lane;
     fitScore: number;
     riskScore: number;
     microscreenOverall?: number;
+    flagCount: number;
   };
 }
 
-/**
- * Minimal wrapper shape for "packet-like" input.
- * If you later build candidatePacket.ts, you can pass that object directly as long as it has these fields.
- */
 export interface CandidatePacketLike {
   candidateId: string;
   roleId: string;
-  triage: TriageResult;
-  verify: VerifyResult;
-  microscreen?: MicroScreenResult;
   candidateName?: string;
   companyName?: string;
   roleName?: string;
+
+  triage: TriageResult;
+  verify: VerifyResult;
+  microscreen?: MicroScreenResult;
 }
 
 function clip01(x: number) {
   return Math.max(0, Math.min(1, x));
 }
 
-function uniq(arr: string[]) {
-  return Array.from(new Set(arr.filter(Boolean)));
+function pct(x: number) {
+  return `${Math.round(clip01(x) * 100)}%`;
 }
 
-function laneToStage(lane: Lane, verifyRisk: number, microscreenOverall?: number): AtsStage {
-  // If high risk, keep on HOLD until clarified (demo-safe)
-  if (verifyRisk >= 0.65) return "HOLD";
-
-  if (lane === "RECRUITER_NOW") {
-    // If microscreen is weak, keep in SCREEN instead of INTERVIEW
-    if (microscreenOverall !== undefined && microscreenOverall < 3.0) return "SCREEN";
-    return "INTERVIEW";
-  }
-  if (lane === "QUICK_ASYNC_SCREEN") return "SCREEN";
-  // Redirect lane should not auto-reject; keep HOLD/REJECT based on your demo story
-  return "HOLD";
+function uniq(items: string[]) {
+  return Array.from(new Set(items.filter(Boolean)));
 }
 
-function evidenceKeywords(triage: TriageResult): string[] {
-  // Extract keywords from evidence items if present
-  const kws = (triage.evidence ?? [])
-    .map((e) => e.keyword)
-    .filter((k): k is string => !!k)
-    .slice(0, 10);
-  return uniq(kws);
+function laneLabel(lane: Lane): string {
+  if (lane === "RECRUITER_NOW") return "Recruiter Now";
+  if (lane === "QUICK_ASYNC_SCREEN") return "Quick Screen";
+  return "Redirect";
 }
 
-function severityToPriority(sev: string): "Low" | "Medium" | "High" {
-  if (sev === "HIGH") return "High";
-  if (sev === "MEDIUM") return "Medium";
+function severityToPriority(severity: string): "Low" | "Medium" | "High" {
+  if (severity === "HIGH") return "High";
+  if (severity === "MEDIUM") return "Medium";
   return "Low";
 }
 
-function mapVerifyActionToTask(a: VerifyAction): AtsTask | null {
-  switch (a.action) {
+function mapStage(args: {
+  lane: Lane;
+  riskScore: number;
+  microscreenOverall?: number;
+}): AtsStage {
+  const { lane, riskScore, microscreenOverall } = args;
+
+  if (riskScore >= 0.65) return "HOLD";
+
+  if (lane === "RECRUITER_NOW") {
+    if (microscreenOverall !== undefined && microscreenOverall < 3.0) {
+      return "SCREEN";
+    }
+    return "INTERVIEW";
+  }
+
+  if (lane === "QUICK_ASYNC_SCREEN") return "SCREEN";
+
+  return "HOLD";
+}
+
+function extractSkillTags(triage: TriageResult): string[] {
+  const fromEvidence = (triage.evidence ?? [])
+    .map((e) => e.keyword)
+    .filter((k): k is string => !!k)
+    .slice(0, 8)
+    .map((k) => `skill:${k.toLowerCase()}`);
+
+  return uniq(fromEvidence);
+}
+
+function mapVerifyActionToTask(action: VerifyAction): AtsTask | null {
+  switch (action.action) {
     case "REQUEST_LINKEDIN":
-      return { type: "REQUEST_LINKEDIN", label: "Request LinkedIn profile", priority: "Medium", meta: { kind: "linkedin" } };
+      return {
+        type: "REQUEST_LINKEDIN",
+        label: "Request LinkedIn profile",
+        priority: "Medium",
+        meta: { source: "verify" },
+      };
+
     case "REQUEST_PORTFOLIO":
-      return { type: "REQUEST_PORTFOLIO", label: "Request portfolio/GitHub link", priority: "Medium", meta: { kind: "portfolio" } };
+      return {
+        type: "REQUEST_PORTFOLIO",
+        label: "Request portfolio or GitHub link",
+        priority: "Medium",
+        meta: { source: "verify" },
+      };
+
     case "SEND_CODE_SCREEN":
-      return { type: "SEND_CODING_SCREEN", label: "Send quick coding screen", priority: "High", meta: { kind: "coding" } };
+      return {
+        type: "SEND_CODING_SCREEN",
+        label: "Send quick coding screen",
+        priority: "High",
+        meta: { source: "verify" },
+      };
+
     case "ASK_FOLLOWUP":
-      return { type: "REQUEST_CLARIFICATION", label: "Ask a short clarification question", priority: "High" };
+      return {
+        type: "REQUEST_CLARIFICATION",
+        label: "Ask short clarification question",
+        priority: "High",
+        meta: { source: "verify" },
+      };
+
     case "REQUEST_TRANSCRIPT_EXPORT":
-      return { type: "REVIEW_FLAG", label: "Review transcript for verification", priority: "Medium" };
+      return {
+        type: "REVIEW_FLAG",
+        label: "Review transcript for verification",
+        priority: "Medium",
+        meta: { source: "verify" },
+      };
+
     default:
       return null;
   }
 }
 
-function buildAtsNote(args: {
-  triage: TriageResult;
-  verify: VerifyResult;
-  microscreen?: MicroScreenResult;
-  candidateName?: string;
-  roleName?: string;
-}): string {
-  const { triage, verify, microscreen, candidateName, roleName } = args;
+function buildTags(packet: CandidatePacketLike, stage: AtsStage): string[] {
+  const riskTag =
+    packet.verify.riskScore >= 0.65
+      ? "risk:high"
+      : packet.verify.riskScore >= 0.35
+        ? "risk:medium"
+        : "risk:low";
 
-  const topEvidence = (triage.evidence ?? []).slice(0, 4).map((e) => {
-    const k = e.keyword ? `Keyword: ${e.keyword}` : "";
-    const q = e.quote ? `Quote: ${e.quote}` : "";
-    const bits = [k, q].filter(Boolean).join(" | ");
-    return bits ? `- ${e.label} (${bits})` : `- ${e.label}`;
-  });
+  const stageTag = `stage:${stage.toLowerCase()}`;
+  const laneTag = `lane:${packet.triage.lane.toLowerCase()}`;
+  const fitTag = `fit:${Math.round(packet.triage.fitScore * 100)}`;
+  const sourceTag = "source:career_fair";
+  const flagTag = `flags:${packet.verify.flags.length}`;
 
-  const topFlags = verify.flags.slice(0, 3).map((f) => `- ${f.type} (${f.severity}): ${f.reason}`);
-
-  const msLine = microscreen
-    ? `Micro-screen: overall ${microscreen.overall.toFixed(2)} / 5 (confidence ${microscreen.confidence.toFixed(2)})`
-    : "Micro-screen: not available";
-
-  return [
-    `FairSignal / AI Hire AI — Recruiter Note`,
-    candidateName ? `Candidate: ${candidateName}` : "",
-    roleName ? `Role: ${roleName}` : "",
-    `Lane: ${triage.lane} | Fit: ${(triage.fitScore * 100).toFixed(0)}% | Confidence: ${(triage.confidence * 100).toFixed(0)}%`,
-    `Verification risk: ${(verify.riskScore * 100).toFixed(0)}%`,
-    msLine,
-    ``,
-    `Top evidence:`,
-    ...(topEvidence.length ? topEvidence : ["- (none)"]),
-    ``,
-    `Flags (signals only):`,
-    ...(topFlags.length ? topFlags : ["- none"]),
-    ``,
-    `Recommended next step: ${triage.nextActions?.[0]?.action ?? "REVIEW"}`,
-  ]
-    .filter((s) => s !== "")
-    .join("\n");
+  return uniq([
+    sourceTag,
+    stageTag,
+    laneTag,
+    fitTag,
+    riskTag,
+    flagTag,
+    ...extractSkillTags(packet.triage),
+  ]);
 }
 
-function buildEmailDrafts(args: {
-  packet: CandidatePacketLike;
-  stage: AtsStage;
-}): AtsEmailDraft[] {
-  const { packet, stage } = args;
+function buildTasks(packet: CandidatePacketLike, stage: AtsStage): AtsTask[] {
+  const tasks: AtsTask[] = [];
+
+  // Stage-based tasks
+  if (stage === "INTERVIEW") {
+    tasks.push({
+      type: "SCHEDULE_INTERVIEW",
+      label: "Schedule interview",
+      priority: "High",
+    });
+    tasks.push({
+      type: "FOLLOW_UP",
+      label: "Send next-step follow-up",
+      priority: "High",
+    });
+  } else if (stage === "SCREEN") {
+    tasks.push({
+      type: "SEND_MICRO_SCREEN",
+      label: "Send 3-minute micro-screen",
+      priority: "High",
+    });
+  } else if (stage === "HOLD") {
+    tasks.push({
+      type: "REVIEW_FLAG",
+      label: "Review verification signals before advancing",
+      priority: "High",
+    });
+  }
+
+  // Verification action tasks
+  for (const action of packet.verify.suggestedActions.slice(0, 3)) {
+    const task = mapVerifyActionToTask(action);
+    if (task) tasks.push(task);
+  }
+
+  // Flag review tasks
+  for (const flag of packet.verify.flags.slice(0, 2)) {
+    tasks.push({
+      type: "REVIEW_FLAG",
+      label: `Review flag: ${flag.type}`,
+      priority: severityToPriority(flag.severity),
+      meta: { severity: flag.severity, type: flag.type },
+    });
+  }
+
+  return tasks.slice(0, 8);
+}
+
+function buildTopEvidence(packet: CandidatePacketLike): string[] {
+  const lines: string[] = [];
+
+  for (const e of (packet.triage.evidence ?? []).slice(0, 4)) {
+    const pieces: string[] = [];
+    if (e.label) pieces.push(e.label);
+    if (e.keyword) pieces.push(`keyword=${e.keyword}`);
+    if (e.quote) pieces.push(`quote="${e.quote}"`);
+    lines.push(`- ${pieces.join(" | ")}`);
+  }
+
+  if (packet.microscreen?.highlights?.length) {
+    for (const h of packet.microscreen.highlights.slice(0, 2)) {
+      lines.push(`- micro-screen: "${h}"`);
+    }
+  }
+
+  if (!lines.length) lines.push("- no strong evidence extracted");
+  return lines;
+}
+
+function buildFlagLines(packet: CandidatePacketLike): string[] {
+  const lines = packet.verify.flags.slice(0, 3).map((f) => {
+    return `- ${f.type} (${f.severity}): ${f.reason}`;
+  });
+
+  if (!lines.length) lines.push("- none");
+  return lines;
+}
+
+function buildStructuredNote(packet: CandidatePacketLike, stage: AtsStage): string {
+  const header = [
+    "AI Hire AI — ATS Sync Note",
+    packet.candidateName ? `Candidate: ${packet.candidateName}` : "",
+    packet.roleName ? `Role: ${packet.roleName}` : "",
+    packet.companyName ? `Company: ${packet.companyName}` : "",
+  ].filter(Boolean);
+
+  const summaryLines = [
+    `Lane: ${laneLabel(packet.triage.lane)}`,
+    `Fit: ${pct(packet.triage.fitScore)}`,
+    `Confidence: ${pct(packet.triage.confidence)}`,
+    `Verification Risk: ${pct(packet.verify.riskScore)}`,
+    `Suggested Stage: ${stage}`,
+    packet.microscreen
+      ? `Micro-screen: ${packet.microscreen.overall.toFixed(2)}/5 (confidence ${packet.microscreen.confidence.toFixed(2)})`
+      : "Micro-screen: not available",
+  ];
+
+  const evidenceLines = buildTopEvidence(packet);
+  const flagLines = buildFlagLines(packet);
+
+  const recommendedNext =
+    stage === "INTERVIEW"
+      ? "Move candidate to interview scheduling."
+      : stage === "SCREEN"
+        ? "Request quick screen before recruiter time."
+        : "Hold candidate until clarification / proof is reviewed.";
+
+  return [
+    ...header,
+    "",
+    ...summaryLines,
+    "",
+    "Top Evidence:",
+    ...evidenceLines,
+    "",
+    "Verification Signals:",
+    ...flagLines,
+    "",
+    `Recommended Next Step: ${recommendedNext}`,
+  ].join("\n");
+}
+
+function buildEmailDrafts(packet: CandidatePacketLike, stage: AtsStage): AtsEmailDraft[] {
   const name = packet.candidateName ?? "there";
-  const role = packet.roleName ?? "the role";
+  const role = packet.roleName ?? "this role";
 
   if (stage === "INTERVIEW") {
     return [
@@ -182,9 +350,9 @@ function buildEmailDrafts(args: {
         kind: "NEXT_STEPS",
         subject: `Next steps for ${role}`,
         body:
-          `Hi ${name},\n\nThanks for chatting with us at the career fair. ` +
-          `We’d like to move you to the next step for ${role}. ` +
-          `Please share 2–3 time windows this week that work for a short interview.\n\n` +
+          `Hi ${name},\n\n` +
+          `Thanks for speaking with us today. We’d like to move you forward for ${role}. ` +
+          `Please send 2–3 time windows that work for a short interview this week.\n\n` +
           `Best,\nRecruiting Team`,
       },
     ];
@@ -196,9 +364,8 @@ function buildEmailDrafts(args: {
         kind: "THANK_YOU",
         subject: `Thanks for your interest in ${role}`,
         body:
-          `Hi ${name},\n\nThanks for stopping by our booth. ` +
-          `To move forward, we’d like you to complete a quick screen (3 minutes) so we can capture a bit more signal. ` +
-          `We’ll follow up with next steps shortly after.\n\n` +
+          `Hi ${name},\n\n` +
+          `Thanks for connecting with us. We’d like you to complete a short micro-screen so we can capture a bit more signal before the next step.\n\n` +
           `Best,\nRecruiting Team`,
       },
     ];
@@ -207,88 +374,77 @@ function buildEmailDrafts(args: {
   return [
     {
       kind: "REDIRECT",
-      subject: `Thanks for connecting at the career fair`,
+      subject: `Thanks for connecting with us`,
       body:
-        `Hi ${name},\n\nThanks for taking the time to connect with us. ` +
-        `At the moment, we may not have the best match for your profile in this specific role. ` +
-        `If you’re open to it, we can point you to other roles that better match your interests.\n\n` +
+        `Hi ${name},\n\n` +
+        `Thank you for taking the time to connect with us. At the moment, we may not have the best fit for this specific role, but we appreciate your interest and can point you to other opportunities.\n\n` +
         `Best,\nRecruiting Team`,
     },
   ];
 }
 
-function buildNovaActPreview(args: {
+function buildActPreviewSteps(payload: {
   stage: AtsStage;
   tags: string[];
+  tasks: AtsTask[];
 }): NovaActStepPreview[] {
-  // Keep short for demo: 4–6 steps max
   const steps: NovaActStepPreview[] = [
-    { step: "Open ATS", details: "Navigate to ATS and locate candidate", status: "Queued" },
-    { step: "Update notes", details: "Paste structured recruiter note", status: "Queued" },
-    { step: "Apply tags", details: `Add tags: ${args.tags.slice(0, 6).join(", ")}`, status: "Queued" },
-    { step: "Move stage", details: `Set stage to ${args.stage}`, status: "Queued" },
-    { step: "Create tasks", details: "Add follow-up / scheduling tasks", status: "Queued" },
+    {
+      step: "Open ATS candidate record",
+      details: "Navigate to the candidate profile in the existing ATS",
+      status: "Queued",
+    },
+    {
+      step: "Write structured note",
+      details: "Paste ATS-ready recruiter note",
+      status: "Queued",
+    },
+    {
+      step: "Apply tags",
+      details: `Add tags: ${payload.tags.slice(0, 6).join(", ")}`,
+      status: "Queued",
+    },
+    {
+      step: "Update stage",
+      details: `Move candidate to ${payload.stage}`,
+      status: "Queued",
+      requiresApproval: true,
+    },
+    {
+      step: "Create follow-up tasks",
+      details: `Create ${payload.tasks.length} task(s) in ATS`,
+      status: "Queued",
+    },
   ];
+
   return steps;
 }
 
-/**
- * Main adapter: packet -> ATS-ready payload.
- */
+function buildSummary(packet: CandidatePacketLike, stage: AtsStage): string {
+  return [
+    `${laneLabel(packet.triage.lane)}`,
+    `fit ${pct(packet.triage.fitScore)}`,
+    `risk ${pct(packet.verify.riskScore)}`,
+    `stage ${stage}`,
+    packet.microscreen
+      ? `micro-screen ${packet.microscreen.overall.toFixed(2)}/5`
+      : "no micro-screen",
+  ].join(" • ");
+}
+
 export function toAtsUpdatePayload(packet: CandidatePacketLike): AtsUpdatePayload {
-  const triage = packet.triage;
-  const verify = packet.verify;
-  const microscreen = packet.microscreen;
-
-  const stage = laneToStage(triage.lane, verify.riskScore, microscreen?.overall);
-
-  const kws = evidenceKeywords(triage).map((k) => `skill:${k.toLowerCase()}`);
-
-  const tags = uniq([
-    `source:career_fair`,
-    `lane:${triage.lane}`,
-    `fit:${Math.round(triage.fitScore * 100)}`,
-    verify.riskScore >= 0.65 ? "risk:high" : verify.riskScore >= 0.35 ? "risk:medium" : "risk:low",
-    ...kws.slice(0, 8),
-  ]);
-
-  // Tasks: from verification suggested actions + stage
-  const tasks: AtsTask[] = [];
-
-  // Stage-driven tasks
-  if (stage === "INTERVIEW") {
-    tasks.push({ type: "SCHEDULE_INTERVIEW", label: "Schedule interview", priority: "High" });
-  } else if (stage === "SCREEN") {
-    tasks.push({ type: "SEND_MICRO_SCREEN", label: "Send 3-minute micro-screen", priority: "High" });
-  } else if (stage === "HOLD") {
-    tasks.push({ type: "REVIEW_FLAG", label: "Review verification signals before advancing", priority: "High" });
-  }
-
-  // Verification-driven tasks
-  for (const a of verify.suggestedActions.slice(0, 3)) {
-    const t = mapVerifyActionToTask(a);
-    if (t) tasks.push(t);
-  }
-
-  // Flag-specific tasks (short, 1–2)
-  for (const f of verify.flags.slice(0, 2)) {
-    tasks.push({
-      type: "REVIEW_FLAG",
-      label: `Review flag: ${f.type}`,
-      priority: severityToPriority(f.severity),
-    });
-  }
-
-  const note = buildAtsNote({
-    triage,
-    verify,
-    microscreen,
-    candidateName: packet.candidateName,
-    roleName: packet.roleName,
+  const stage = mapStage({
+    lane: packet.triage.lane,
+    riskScore: packet.verify.riskScore,
+    microscreenOverall: packet.microscreen?.overall,
   });
 
-  const emailDrafts = buildEmailDrafts({ packet, stage });
-  const actPreviewSteps = buildNovaActPreview({ stage, tags });
+  const tags = buildTags(packet, stage);
+  const tasks = buildTasks(packet, stage);
+  const note = buildStructuredNote(packet, stage);
+  const emailDrafts = buildEmailDrafts(packet, stage);
+  const actPreviewSteps = buildActPreviewSteps({ stage, tags, tasks });
+  const summary = buildSummary(packet, stage);
 
   return {
     candidateId: packet.candidateId,
@@ -296,14 +452,16 @@ export function toAtsUpdatePayload(packet: CandidatePacketLike): AtsUpdatePayloa
     stage,
     tags,
     note,
-    tasks: tasks.slice(0, 8), // keep compact for demo
+    tasks,
     emailDrafts,
     actPreviewSteps,
+    summary,
     debug: {
-      lane: triage.lane,
-      fitScore: triage.fitScore,
-      riskScore: verify.riskScore,
-      microscreenOverall: microscreen?.overall,
+      lane: packet.triage.lane,
+      fitScore: packet.triage.fitScore,
+      riskScore: packet.verify.riskScore,
+      microscreenOverall: packet.microscreen?.overall,
+      flagCount: packet.verify.flags.length,
     },
   };
 }

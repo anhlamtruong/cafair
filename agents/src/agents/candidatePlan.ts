@@ -1,10 +1,24 @@
 // Path: agents/src/agents/candidatePlan.ts
 //
-// Candidate-side "Nova Act plan suggestions" (stub-first).
-// Produces a step-by-step plan the UI can render (Queued/Running/Success)
-// and that can later be executed by Nova Act with the same structure.
+// Candidate-side action plan generator for AI Hire AI.
+// Produces a clear step-by-step plan that the UI can render and that can later
+// be sent to novaActStartRun(...).
+//
+// Main use cases:
+// - candidate clicks "Run Plan"
+// - agent suggests next steps (tailor resume, ask referral, apply, follow up)
+// - UI shows a timeline of what the agent will do
+//
+// Works well with:
+// - recruiter/candidate dual-sided demo
+// - stub mode + real Nova Act mode
 
-export type PlanStatus = "Queued" | "Running" | "Success" | "Failed" | "NeedsApproval";
+export type PlanStatus =
+  | "Queued"
+  | "Running"
+  | "Success"
+  | "Failed"
+  | "NeedsApproval";
 
 export type PlanActionType =
   | "CollectPreferences"
@@ -17,11 +31,11 @@ export type PlanActionType =
   | "FollowUp";
 
 export interface CandidatePreferences {
-  roleKeywords?: string[];       // e.g., ["data science", "nlp"]
-  locations?: string[];          // e.g., ["Remote", "Boston, MA"]
+  roleKeywords?: string[];
+  locations?: string[];
   remoteOnly?: boolean;
   salaryMin?: number;
-  workAuth?: string;             // e.g., "US Citizen", "F-1 OPT"
+  workAuth?: string;
   excludeCompanies?: string[];
   maxApplicationsPerDay?: number;
 }
@@ -29,8 +43,8 @@ export interface CandidatePreferences {
 export interface CandidateProfileLite {
   candidateId: string;
   name?: string;
-  gradYear?: number;
   school?: string;
+  gradYear?: number;
   workAuth?: string;
   resumeText?: string;
   portfolioUrls?: string[];
@@ -42,217 +56,389 @@ export interface JobTarget {
   title: string;
   source: "CareerFair" | "LinkedIn" | "GitHub" | "CompanySite";
   url?: string;
-  roleId?: string; // optional internal role mapping
+  roleId?: string;
+  fitScore?: number; // optional hint from matching layer
 }
 
 export interface PlanStep {
   stepId: string;
-  title: string;                 // short UI label
+  title: string;
   type: PlanActionType;
   status: PlanStatus;
   requiresApproval: boolean;
   inputs?: Record<string, string | number | boolean | string[]>;
-  expectedOutput?: string;       // short description
-  notes?: string;                // minimal human-readable explanation
+  expectedOutput?: string;
+  notes?: string;
 }
 
 export interface CandidateActPlan {
   planId: string;
   candidateId: string;
   createdAtISO: string;
-  goal: string;                  // e.g. "Apply to Data Science Intern at Company A"
+  goal: string;
   steps: PlanStep[];
-  suggestions: string[];         // "what else should agent do?"
+  suggestions: string[];
+  summary: string;
+  debug?: {
+    targetCount: number;
+    usedMode: "demo" | "full";
+    missingPreferences: boolean;
+    thinResume: boolean;
+  };
 }
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`;
 }
 
-function safeLower(s?: string) {
-  return (s ?? "").toLowerCase();
+function uniq(items: string[]) {
+  return Array.from(new Set(items.filter(Boolean)));
 }
 
-/**
- * Build a demo-friendly Nova Act plan for a candidate.
- * Use `mode="demo"` to keep steps short and deterministic.
- */
+function safeLower(s?: string) {
+  return (s ?? "").trim().toLowerCase();
+}
+
+function looksLikeThinResume(resumeText?: string): boolean {
+  const text = (resumeText ?? "").trim();
+  if (!text) return true;
+  return text.length < 140;
+}
+
+function preferencesMissing(p?: CandidatePreferences): boolean {
+  if (!p) return true;
+
+  const noRoles = (p.roleKeywords?.length ?? 0) === 0;
+  const noLocationSignal =
+    !p.remoteOnly && (p.locations?.length ?? 0) === 0;
+
+  return noRoles || noLocationSignal;
+}
+
+function buildGoal(targets: JobTarget[]): string {
+  if (targets.length === 0) {
+    return "Find best-fit jobs and prepare application packet";
+  }
+
+  if (targets.length === 1) {
+    return `Apply to ${targets[0].title} at ${targets[0].company}`;
+  }
+
+  return `Apply to ${targets.length} selected jobs with approval gates`;
+}
+
+function buildSuggestions(args: {
+  hasTargets: boolean;
+  thinResume: boolean;
+  missingPreferences: boolean;
+}): string[] {
+  const suggestions: string[] = [
+    "Show my current action plan",
+    "Why is this job a match for me?",
+    "Suggest the next best step before I apply",
+  ];
+
+  if (args.missingPreferences) {
+    suggestions.push("Ask me to confirm role, location, and salary preferences");
+  }
+
+  if (args.thinResume) {
+    suggestions.push("Improve my resume bullets before applying");
+  } else {
+    suggestions.push("Tailor my resume to the selected job description");
+  }
+
+  if (args.hasTargets) {
+    suggestions.push("Draft a referral message and let me review it first");
+    suggestions.push("Apply now and track the application status");
+  } else {
+    suggestions.push("Find matching jobs from fair booths and job boards");
+  }
+
+  return uniq(suggestions).slice(0, 6);
+}
+
+function createStep(args: {
+  title: string;
+  type: PlanActionType;
+  requiresApproval?: boolean;
+  status?: PlanStatus;
+  inputs?: Record<string, string | number | boolean | string[]>;
+  expectedOutput?: string;
+  notes?: string;
+}): PlanStep {
+  const requiresApproval = args.requiresApproval ?? false;
+  const status =
+    args.status ??
+    (requiresApproval ? "NeedsApproval" : "Queued");
+
+  return {
+    stepId: uid("step"),
+    title: args.title,
+    type: args.type,
+    status,
+    requiresApproval,
+    inputs: args.inputs,
+    expectedOutput: args.expectedOutput,
+    notes: args.notes,
+  };
+}
+
+function buildPreferenceStep(
+  prefs?: CandidatePreferences
+): PlanStep {
+  return createStep({
+    title: "Confirm preferences",
+    type: "CollectPreferences",
+    requiresApproval: true,
+    inputs: {
+      roleKeywords: prefs?.roleKeywords ?? [],
+      locations: prefs?.locations ?? [],
+      remoteOnly: prefs?.remoteOnly ?? false,
+      salaryMin: prefs?.salaryMin ?? 0,
+      workAuth: prefs?.workAuth ?? "",
+    },
+    expectedOutput: "Saved role, location, and application rules",
+    notes:
+      "Confirm job interests, location/remote preferences, and basic constraints before the plan runs.",
+  });
+}
+
+function buildFindJobsStep(
+  prefs?: CandidatePreferences
+): PlanStep {
+  return createStep({
+    title: "Find matching jobs",
+    type: "FindJobs",
+    requiresApproval: false,
+    inputs: {
+      roleKeywords: prefs?.roleKeywords ?? [],
+      locations: prefs?.locations ?? [],
+      remoteOnly: prefs?.remoteOnly ?? false,
+      excludeCompanies: prefs?.excludeCompanies ?? [],
+      maxApplicationsPerDay: prefs?.maxApplicationsPerDay ?? 0,
+    },
+    expectedOutput: "Ranked job list from fair booths and external sources",
+    notes:
+      "Search candidate-approved sources and return best-fit roles with matching reasons.",
+  });
+}
+
+function buildResumeFoundationStep(): PlanStep {
+  return createStep({
+    title: "Strengthen resume basics",
+    type: "TailorResume",
+    requiresApproval: true,
+    expectedOutput: "Cleaner baseline resume with stronger bullet structure",
+    notes:
+      "Resume looks thin. Suggest stronger, measurable bullets before job-specific tailoring.",
+  });
+}
+
+function buildTargetSteps(target: JobTarget): PlanStep[] {
+  const steps: PlanStep[] = [];
+
+  steps.push(
+    createStep({
+      title: `Tailor resume for ${target.company}`,
+      type: "TailorResume",
+      requiresApproval: true,
+      inputs: {
+        company: target.company,
+        title: target.title,
+        source: target.source,
+        jobId: target.jobId,
+        url: target.url ?? "",
+      },
+      expectedOutput: "ATS-friendly tailored resume + before/after diff",
+      notes:
+        "Highlight matched keywords, fill missing skill phrasing, and require candidate approval before saving.",
+    })
+  );
+
+  steps.push(
+    createStep({
+      title: `Generate micro-screen for ${target.company}`,
+      type: "GenerateMicroScreen",
+      requiresApproval: false,
+      inputs: {
+        company: target.company,
+        title: target.title,
+        roleId: target.roleId ?? "",
+      },
+      expectedOutput: "2–3 short questions with transcript-ready capture",
+      notes:
+        "Capture quick signal before submitting so recruiters have cleaner context.",
+    })
+  );
+
+  if (
+    target.source === "CareerFair" ||
+    target.source === "LinkedIn" ||
+    target.source === "CompanySite"
+  ) {
+    steps.push(
+      createStep({
+        title: `Draft referral request for ${target.company}`,
+        type: "RequestReferral",
+        requiresApproval: true,
+        inputs: {
+          company: target.company,
+          channel:
+            target.source === "LinkedIn" ? "LinkedIn" : "Email/Connection",
+        },
+        expectedOutput: "Short referral message draft",
+        notes:
+          "Suggest a referral outreach draft. No message is sent without approval.",
+      })
+    );
+  }
+
+  steps.push(
+    createStep({
+      title: `Apply to ${target.company}`,
+      type: "ApplyToJob",
+      requiresApproval: true,
+      inputs: {
+        company: target.company,
+        title: target.title,
+        source: target.source,
+        jobId: target.jobId,
+        url: target.url ?? "",
+      },
+      expectedOutput: "Application submitted with confirmation captured",
+      notes:
+        "Open the posting, fill fields, upload assets, and submit only after candidate approval.",
+    })
+  );
+
+  steps.push(
+    createStep({
+      title: `Track ${target.company} application`,
+      type: "TrackApplication",
+      requiresApproval: false,
+      inputs: {
+        company: target.company,
+        title: target.title,
+      },
+      expectedOutput: "Tracked application state + timeline",
+      notes:
+        "Record submission and keep a simple status timeline in the candidate dashboard.",
+    })
+  );
+
+  steps.push(
+    createStep({
+      title: `Follow up with ${target.company}`,
+      type: "FollowUp",
+      requiresApproval: true,
+      inputs: {
+        company: target.company,
+        daysAfterSubmit: 4,
+      },
+      expectedOutput: "Follow-up draft scheduled after submission",
+      notes:
+        "Prepare a polite follow-up draft 3–5 days after submission. Candidate reviews before sending.",
+    })
+  );
+
+  return steps;
+}
+
+function buildSummary(args: {
+  targetCount: number;
+  missingPreferences: boolean;
+  thinResume: boolean;
+}): string {
+  const parts: string[] = [];
+
+  if (args.targetCount === 0) {
+    parts.push("No target jobs yet");
+  } else if (args.targetCount === 1) {
+    parts.push("1 target job selected");
+  } else {
+    parts.push(`${args.targetCount} target jobs selected`);
+  }
+
+  parts.push(
+    args.missingPreferences
+      ? "preferences need confirmation"
+      : "preferences are set"
+  );
+
+  parts.push(
+    args.thinResume
+      ? "resume needs improvement first"
+      : "resume ready for tailoring"
+  );
+
+  return parts.join(" • ");
+}
+
 export function buildCandidateActPlan(args: {
   candidate: CandidateProfileLite;
   preferences?: CandidatePreferences;
-  targets: JobTarget[];                 // 1..N jobs the candidate wants
+  targets: JobTarget[];
   mode?: "demo" | "full";
 }): CandidateActPlan {
   const mode = args.mode ?? "demo";
-  const { candidate, preferences, targets } = args;
+  const { candidate, preferences } = args;
 
-  const goal =
-    targets.length === 1
-      ? `Apply to ${targets[0].title} at ${targets[0].company}`
-      : `Apply to ${targets.length} jobs based on preferences`;
+  const targetLimit = mode === "demo" ? 1 : args.targets.length;
+  const targets = args.targets.slice(0, targetLimit);
 
-  // Basic suggestions (shown in chatbot)
-  const suggestions: string[] = [
-    "Ask me to confirm work authorization and location constraints",
-    "Tailor my resume to the job description with an approval preview",
-    "Draft a referral request message and let me edit before sending",
-    "Auto-track application status and remind me to follow up in 3–5 days",
-  ];
+  const thinResume = looksLikeThinResume(candidate.resumeText);
+  const missingPreferences = preferencesMissing(preferences);
 
   const steps: PlanStep[] = [];
 
-  // 1) Preferences (only if missing or incomplete)
-  const prefMissing =
-    !preferences ||
-    (preferences.roleKeywords?.length ?? 0) === 0 ||
-    (!preferences.remoteOnly && (preferences.locations?.length ?? 0) === 0);
-
-  if (prefMissing) {
-    steps.push({
-      stepId: uid("step"),
-      title: "Confirm preferences",
-      type: "CollectPreferences",
-      status: "NeedsApproval",
-      requiresApproval: true,
-      expectedOutput: "Saved preferences for job matching",
-      notes: "Quick check: role keywords, location/remote, salary, work authorization.",
-    });
+  if (missingPreferences) {
+    steps.push(buildPreferenceStep(preferences));
   }
 
-  // 2) Find jobs (optional for demo if targets already selected)
-  if (mode === "full") {
-    steps.push({
-      stepId: uid("step"),
-      title: "Find matching jobs",
-      type: "FindJobs",
-      status: "Queued",
-      requiresApproval: false,
-      inputs: {
-        roleKeywords: preferences?.roleKeywords ?? [],
-        remoteOnly: preferences?.remoteOnly ?? false,
-        locations: preferences?.locations ?? [],
-      },
-      expectedOutput: "Ranked list of best-fit jobs",
-      notes: "Search across LinkedIn/GitHub/company sites and the fair booths.",
-    });
+  if (targets.length === 0) {
+    steps.push(buildFindJobsStep(preferences));
   }
 
-  // 3) For each target job: tailor resume + microscreen + referral + apply + track
-  for (const job of targets.slice(0, mode === "demo" ? 1 : targets.length)) {
-    steps.push({
-      stepId: uid("step"),
-      title: `Tailor resume for ${job.company}`,
-      type: "TailorResume",
-      status: "Queued",
-      requiresApproval: true,
-      inputs: {
-        company: job.company,
-        title: job.title,
-        source: job.source,
-      },
-      expectedOutput: "ATS-friendly resume version + diff preview",
-      notes: "Highlight matched keywords and suggest edits. Requires approval before saving.",
-    });
-
-    steps.push({
-      stepId: uid("step"),
-      title: "Generate micro-screen",
-      type: "GenerateMicroScreen",
-      status: "Queued",
-      requiresApproval: false,
-      inputs: {
-        role: job.title,
-        company: job.company,
-      },
-      expectedOutput: "2–3 short questions + transcript capture",
-      notes: "Fast questions to capture signal and fill gaps before applying.",
-    });
-
-    // referral suggestion: only if job source is LinkedIn/CompanySite OR candidate wants it
-    const wantsReferral =
-      (preferences?.excludeCompanies?.includes(job.company) ?? false) === false &&
-      (job.source === "LinkedIn" || job.source === "CompanySite" || job.source === "CareerFair");
-
-    if (wantsReferral) {
-      steps.push({
-        stepId: uid("step"),
-        title: `Draft referral ask (${job.company})`,
-        type: "RequestReferral",
-        status: "Queued",
-        requiresApproval: true,
-        inputs: {
-          company: job.company,
-          channel: "LinkedIn",
-        },
-        expectedOutput: "Short referral message + suggested targets",
-        notes: "Agent drafts; you review before sending. No messages sent without approval.",
-      });
-    }
-
-    steps.push({
-      stepId: uid("step"),
-      title: `Apply (${job.company})`,
-      type: "ApplyToJob",
-      status: "Queued",
-      requiresApproval: true,
-      inputs: {
-        url: job.url ?? "",
-        source: job.source,
-        company: job.company,
-        title: job.title,
-      },
-      expectedOutput: "Application submitted + confirmation captured",
-      notes: "Nova Act will open the posting, fill fields, upload resume, submit, and save proof.",
-    });
-
-    steps.push({
-      stepId: uid("step"),
-      title: "Track application",
-      type: "TrackApplication",
-      status: "Queued",
-      requiresApproval: false,
-      expectedOutput: "Status timeline + reminders",
-      notes: "Track submission, response, and follow-up timing.",
-    });
-
-    steps.push({
-      stepId: uid("step"),
-      title: "Follow-up reminder",
-      type: "FollowUp",
-      status: "Queued",
-      requiresApproval: true,
-      inputs: {
-        daysAfterSubmit: 4,
-      },
-      expectedOutput: "Draft follow-up message + schedule",
-      notes: "Agent drafts a follow-up after 3–5 days; you approve before sending.",
-    });
+  if (thinResume) {
+    steps.push(buildResumeFoundationStep());
   }
 
-  // Small personalization: if resume text is extremely short, add extra step
-  const resumeLen = (candidate.resumeText ?? "").trim().length;
-  if (resumeLen > 0 && resumeLen < 120) {
-    steps.unshift({
-      stepId: uid("step"),
-      title: "Improve resume basics",
-      type: "TailorResume",
-      status: "NeedsApproval",
-      requiresApproval: true,
-      expectedOutput: "Baseline resume filled with missing essentials",
-      notes: "Resume looks thin; agent will suggest bullet structure + measurable impact.",
-    });
+  for (const target of targets) {
+    steps.push(...buildTargetSteps(target));
   }
 
-  // Normalize approvals: Tailor/Referral/Apply/FollowUp always require approval
-  const normalized = steps.map((s) => {
-    const lower = safeLower(s.title);
-    const mustApprove =
-      s.type === "TailorResume" || s.type === "RequestReferral" || s.type === "ApplyToJob" || s.type === "FollowUp";
-    return {
-      ...s,
-      requiresApproval: mustApprove ? true : s.requiresApproval,
-      status: mustApprove && s.status === "Queued" ? "NeedsApproval" : s.status,
-    };
+  // If somehow no steps were generated, keep one sensible fallback
+  if (steps.length === 0) {
+    steps.push(
+      createStep({
+        title: "Find matching jobs",
+        type: "FindJobs",
+        requiresApproval: false,
+        expectedOutput: "Ranked list of suggested jobs",
+        notes: "Fallback step to keep the plan usable.",
+      })
+    );
+  }
+
+  // For UI clarity, make the first step active if it does not need approval.
+  const first = steps[0];
+  if (first && !first.requiresApproval) {
+    first.status = "Running";
+    first.status = "Queued"; // keep initial plan non-destructive; actual run changes status
+  }
+
+  const goal = buildGoal(targets);
+  const suggestions = buildSuggestions({
+    hasTargets: targets.length > 0,
+    thinResume,
+    missingPreferences,
+  });
+
+  const summary = buildSummary({
+    targetCount: targets.length,
+    missingPreferences,
+    thinResume,
   });
 
   return {
@@ -260,7 +446,14 @@ export function buildCandidateActPlan(args: {
     candidateId: candidate.candidateId,
     createdAtISO: new Date().toISOString(),
     goal,
-    steps: normalized,
+    steps,
     suggestions,
+    summary,
+    debug: {
+      targetCount: targets.length,
+      usedMode: mode,
+      missingPreferences,
+      thinResume,
+    },
   };
 }
