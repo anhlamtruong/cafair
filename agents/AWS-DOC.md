@@ -1,5 +1,5 @@
 # AWS Setup Guide for us
-**Goal:** get everything ready for the AI Hire AI / FairSignal project **before coding**  
+**Goal:** get everything ready for the AI Hire AI **before coding**  
 **Outcome:** teammate can use AWS for:
 - S3 storage
 - Lambda
