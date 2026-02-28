@@ -1,4 +1,4 @@
-# AI HIRE AI Agents
+# AI HIRE AI Agents ready to merge for test
 
 This folder contains the **agent-side logic** for the AI Hire AI app. It powers both **recruiter-side screening** and **candidate-side application automation**, with outputs that are ready for UI rendering, backend actions, and future ATS sync.
 
