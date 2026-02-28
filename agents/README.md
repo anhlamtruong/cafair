@@ -81,10 +81,11 @@ npx tsx agents/scripts/run-microscreen-local.ts
 npx tsx agents/scripts/run-packet-local.ts
 npx tsx agents/scripts/run-social-screen-local.ts
 USE_REAL_BEDROCK=true AWS_PROFILE=local-iam AWS_REGION=us-east-1 BEDROCK_MODEL_ID=amazon.nova-lite-v1:0 npx tsx agents/scripts/run-bedrock-local.ts
+```
 
 
-
-Key paths
+## Key paths
+```bash
 	•	agents/src/types.ts — shared base types
 	•	agents/src/index.ts — public exports
 	•	agents/src/agents/* — agent logic
@@ -119,16 +120,19 @@ These agents are designed to plug into:
 	•	Bedrock: reasoning, screening, and structured output generation
 
 AI Hire AI is an automation layer, not a replacement for an existing ATS.
+```
 
-Next
+### Next
+
+```bash
 	•	Add backend wrapper files in apps/web-client for app integration
 	•	Expose stable procedures like getBedrockScreen
 	•	Connect recruiter candidate drawer to real Bedrock output
 	•	Connect candidate-side plan UI to candidatePlan.ts
 	•	Add frontend wiring for Nova Act actions
+```
 
-
-Current structure
+## Current structure
 
 ```bash
 agents/
