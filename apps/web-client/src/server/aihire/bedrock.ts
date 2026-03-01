@@ -11,7 +11,7 @@
 // or
 //   { ok: false, error, details? }
 
-import { runBedrockCandidateScreen } from "../../../../../agents/src/agents/bedrockScreen";
+import { runBedrockCandidateScreen } from "../../../../llm/agents/src/agents/bedrockScreen";
 
 export interface GetBedrockScreenInput {
   candidateId: string;
