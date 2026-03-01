@@ -1,3 +1,10 @@
+# Theme Definitions — CSS Variable Reference
+
+> Complete mapping of CSS custom properties to Tailwind classes.
+> Used by the theme engine in `services/theme/`.
+
+---
+
 ### **Base Colors**
 
 These define the core look of your application.

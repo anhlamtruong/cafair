@@ -1,14 +1,6 @@
-import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
-import { appRouter } from "@/server/routers/app";
-import { createTRPCContext } from "@/server/init";
+import { handle } from "hono/vercel";
+import app from "@/server/hono/app";
 
-const handler = (request: Request) => {
-  return fetchRequestHandler({
-    endpoint: "/api/trpc",
-    req: request,
-    router: appRouter,
-    createContext: createTRPCContext,
-  });
-};
+const handler = handle(app);
 
 export { handler as GET, handler as POST };

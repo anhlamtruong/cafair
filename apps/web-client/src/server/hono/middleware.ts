@@ -14,12 +14,20 @@ import { HTTPException } from "hono/http-exception";
 export type AuthEnv = {
   Variables: {
     userId: string;
+    apiKeyId?: string;
   };
 };
 
 // ── Keys ────────────────────────────────────────────────────────────────
 
 const secretKey = process.env.CLERK_SECRET_KEY!;
+const apiKeys = (process.env.API_KEYS ?? "")
+  .split(",")
+  .map((raw) => raw.trim())
+  .filter(Boolean);
+
+const isHealthPath = (path: string) =>
+  path === "/api/mobile/health" || path === "/api/v1/health";
 
 // ── Middleware ───────────────────────────────────────────────────────────
 
@@ -32,7 +40,7 @@ const secretKey = process.env.CLERK_SECRET_KEY!;
  */
 export const clerk = createMiddleware<AuthEnv>(async (c, next) => {
   // Skip auth for health check
-  if (c.req.path === "/api/mobile/health") {
+  if (isHealthPath(c.req.path)) {
     await next();
     return;
   }
@@ -72,6 +80,33 @@ export const clerk = createMiddleware<AuthEnv>(async (c, next) => {
       message: "Unauthorized: invalid or expired token",
     });
   }
+});
+
+export const requireApiKey = createMiddleware<AuthEnv>(async (c, next) => {
+  const rawHeader = c.req.header("x-api-key") ?? c.req.header("X-API-Key");
+
+  if (!rawHeader) {
+    throw new HTTPException(401, {
+      message: "Unauthorized: missing x-api-key header",
+    });
+  }
+
+  if (apiKeys.length === 0) {
+    throw new HTTPException(503, {
+      message: "API key auth is not configured",
+    });
+  }
+
+  const [providedKey, providedKeyId] = rawHeader.split(":");
+
+  if (!providedKey || !apiKeys.includes(providedKey)) {
+    throw new HTTPException(401, {
+      message: "Unauthorized: invalid API key",
+    });
+  }
+
+  c.set("apiKeyId", providedKeyId ?? "default");
+  await next();
 });
 
 /**

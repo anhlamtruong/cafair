@@ -5,7 +5,7 @@
  */
 
 import { handle } from "hono/vercel";
-import { app } from "@/server/hono/app";
+import app from "@/server/hono/app";
 
 // Use Node.js runtime for full multipart/formData support
 export const runtime = "nodejs";

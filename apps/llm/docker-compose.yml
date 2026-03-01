@@ -20,6 +20,9 @@ services:
       - PORT=3001
       - NODE_ENV=${NODE_ENV:-production}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
       - REDIS_URL=redis://redis:6379
       - REDIS_CACHE_TTL=${REDIS_CACHE_TTL:-3600}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}

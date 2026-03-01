@@ -158,13 +158,14 @@ import { PageError, CardError, InlineError } from "@/components/error-display";
 
 ## Available Routers
 
-| Router           | Procedures           | Auth     |
-| ---------------- | -------------------- | -------- |
-| `hello`          | inline greeting      | public   |
-| `protectedHello` | auth test            | required |
-| `users`          | getMe, update, etc.  | required |
-| `examples`       | list, create, etc.   | required |
-| `uploads`        | upload, list, remove | required |
+| Router           | Procedures                                      | Auth     |
+| ---------------- | ----------------------------------------------- | -------- |
+| `hello`          | inline greeting                                 | public   |
+| `protectedHello` | auth test                                       | required |
+| `users`          | getMe, update, etc.                             | required |
+| `examples`       | list, create, etc.                              | required |
+| `uploads`        | upload, list, remove                            | required |
+| `recruiter`      | getCandidates, scoreCandidate, getActions, etc. | required |
 
 ---
 

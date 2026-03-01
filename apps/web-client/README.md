@@ -1,217 +1,139 @@
-# Monorepo Starter
+# CaFair — Web Client
 
-A full-stack monorepo starter template with modern technologies and best practices.
+> Next.js 16 frontend + API layer for the CaFair platform.
 
 ## Tech Stack
 
-### Web Client (`apps/web-client`)
-
-- **Next.js 16** - React framework with App Router
-- **tRPC 11** - End-to-end type-safe API
-- **Drizzle ORM** - Type-safe SQL ORM
-- **Clerk Auth** - Authentication with Supabase RLS integration
-- **Tailwind CSS 4** - Utility-first CSS
-- **shadcn/ui** - Radix-based component library
-- **Zustand** - State management
-
-### LLM Service (`apps/llm`)
-
-- **Express.js** - Minimal web framework
-- **MongoDB** - NoSQL database
-- **Google Gemini** - AI/LLM integration
-- **TypeScript** - Full type safety
-
-### Database (`supabase/`)
-
-- **Supabase** - PostgreSQL with Row Level Security
-- **Clerk JWT** - Authentication tokens for RLS policies
+| Layer             | Technology                                  |
+| ----------------- | ------------------------------------------- |
+| **Framework**     | Next.js 16 (App Router) + React 19          |
+| **Type-safe API** | tRPC 11 + TanStack Query                    |
+| **REST API**      | Hono (for mobile / external clients)        |
+| **ORM**           | Drizzle ORM 0.45                            |
+| **Auth**          | Clerk (web cookies + mobile Bearer JWT)     |
+| **Database**      | Supabase PostgreSQL with Row Level Security |
+| **Styles**        | Tailwind CSS v4 + shadcn/ui                 |
+| **State**         | Zustand (theme engine, editor)              |
+| **Validation**    | Zod                                         |
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 20+
-- pnpm (recommended) or npm
-- Docker (for local Supabase)
-- MongoDB (for LLM service)
+- Docker (for local Supabase & Redis)
+- npm (monorepo workspaces)
 
 ### Installation
 
-1. Clone the repository:
+```bash
+# From the monorepo root
+npm install
 
-   ```bash
-   git clone <repo-url> my-project
-   cd my-project
-   ```
+# Set up environment variables
+cp apps/web-client/.env.example apps/web-client/.env
+```
 
-2. Install dependencies:
+Required `.env` keys:
 
-   ```bash
-   pnpm install
-   ```
+| Variable                            | Purpose                                           |
+| ----------------------------------- | ------------------------------------------------- |
+| `DATABASE_URL`                      | Supabase Postgres connection string               |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk frontend auth                               |
+| `CLERK_SECRET_KEY`                  | Clerk server auth                                 |
+| `SUPABASE_URL`                      | Supabase project URL                              |
+| `SUPABASE_ANON_KEY`                 | Supabase anonymous key                            |
+| `SUPABASE_SERVICE_ROLE_KEY`         | Supabase admin key (server only)                  |
+| `LLM_URL`                           | LLM service URL (default `http://localhost:3001`) |
 
-3. Set up environment variables:
+### Run
 
-   ```bash
-   # Root
-   cp .env.example .env
+```bash
+# Start local Supabase
+npm run supa:start
 
-   # Web client
-   cp apps/web-client/.env.example apps/web-client/.env
+# Run migrations
+npm run db:migrate
 
-   # LLM service
-   cp apps/llm/.env.example apps/llm/.env
-   ```
-
-4. Start Supabase:
-
-   ```bash
-   pnpm supa:start
-   ```
-
-5. Run database migrations:
-
-   ```bash
-   pnpm db:push
-   ```
-
-6. Start development servers:
-
-   ```bash
-   # Web client
-   pnpm dev:web
-
-   # LLM service (in another terminal)
-   pnpm dev:llm
-   ```
+# Start dev server (:3000)
+npm run dev:web
+```
 
 ## Project Structure
 
 ```
-monorepo-starter/
-├── apps/
-│   ├── web-client/          # Next.js web application
-│   │   ├── src/
-│   │   │   ├── app/         # Next.js App Router pages
-│   │   │   ├── components/  # React components
-│   │   │   ├── db/          # Drizzle database setup
-│   │   │   ├── lib/         # Utility functions
-│   │   │   ├── server/      # tRPC server setup
-│   │   │   ├── services/    # Feature services (theme, users, etc.)
-│   │   │   ├── styles/      # Global styles
-│   │   │   ├── trpc/        # tRPC client setup
-│   │   │   └── types/       # TypeScript types
-│   │   └── package.json
-│   │
-│   └── llm/                 # Express LLM service
-│       ├── src/
-│       │   ├── lib/         # MongoDB & Gemini clients
-│       │   └── routes/      # API routes
-│       └── package.json
-│
-├── supabase/
-│   ├── config.toml          # Supabase local config
-│   └── migrations/          # Database migrations
-│
-├── package.json             # Root workspace config
-└── README.md
+src/
+├── app/                     # Next.js App Router pages
+│   ├── (auth)/              # Sign-in / sign-up
+│   ├── (dashboard)/         # Authenticated pages
+│   │   ├── dashboard/       # Main dashboard
+│   │   ├── recruiter/       # Recruiter pipeline, pre-fair, settings
+│   │   ├── dev/             # Developer tools
+│   │   └── theme-editor/    # Live theme editor
+│   └── api/                 # API route handlers (tRPC + Hono)
+├── components/              # Shared UI (navbar, sidebar, topbar, ui/)
+├── db/                      # Drizzle client, schema barrel, seed, reset
+├── docs/                    # Internal documentation
+│   ├── BACKEND_API_GUIDE.md # Recruiter API reference for frontend devs
+│   ├── TRPC_USAGE_GUIDE.md  # tRPC + TanStack Query patterns
+│   ├── MOBILE_CLIENT.md     # Hono REST API for mobile clients
+│   └── THEME_DEFINITIONS.md # CSS variable → Tailwind class reference
+├── lib/                     # Utilities (color-converter, supabase, utils)
+├── server/                  # tRPC init, Hono app, middleware
+├── services/                # Feature modules
+│   ├── recruiter/           # Candidate pipeline, scoring, actions
+│   ├── users/               # User CRUD
+│   ├── examples/            # Reference/example items
+│   ├── uploads/             # File uploads (Supabase Storage)
+│   └── theme/               # 20+ presets, live editor, Zustand store
+├── styles/                  # globals.css (Tailwind v4 + theme variables)
+├── trpc/                    # tRPC client + server helpers
+└── types/                   # Shared TypeScript types
 ```
 
-## Features
+## Services
 
-### Theme Service
+Each service follows a consistent pattern:
 
-The theme service provides a complete theming solution:
-
-```typescript
-import { ThemeProvider, useTheme } from "@/services/theme";
-
-// In your layout
-<ThemeProvider>
-  <YourApp />
-</ThemeProvider>
-
-// In your components
-const { theme, toggleTheme } = useTheme();
+```
+services/<name>/
+├── schema/          # Drizzle table definitions
+├── procedures/      # tRPC router (one file per procedure or grouped)
+└── index.ts         # Barrel export
 ```
 
-Features:
+| Service       | Description                                                         |
+| ------------- | ------------------------------------------------------------------- |
+| **recruiter** | Candidate pipeline management, AI scoring, follow-ups, actions      |
+| **users**     | User profiles synced from Clerk                                     |
+| **examples**  | Reference CRUD (for learning the pattern)                           |
+| **uploads**   | File uploads via Supabase Storage                                   |
+| **theme**     | 20+ presets, live editor, View Transitions API, Zustand persistence |
 
-- Light/dark mode with system preference detection
-- Multiple theme presets
-- HSL color adjustments
-- Persistent theme state
-- URL-based theme switching (`?theme=preset-name`)
+## Available Scripts
 
-### tRPC API
+| Script                | Description                        |
+| --------------------- | ---------------------------------- |
+| `npm run dev:web`     | Start dev server (:3000)           |
+| `npm run build:web`   | Production build                   |
+| `npm run db:generate` | Generate Drizzle migration SQL     |
+| `npm run db:migrate`  | Apply migrations to Supabase       |
+| `npm run db:push`     | Push schema changes (dev shortcut) |
+| `npm run db:seed`     | Seed database with sample data     |
+| `npm run db:reset`    | Delete all data + re-seed          |
+| `npm run db:studio`   | Open Drizzle Studio                |
+| `npm run supa:start`  | Start local Supabase               |
+| `npm run supa:stop`   | Stop local Supabase                |
 
-Type-safe API calls with automatic inference:
+## Documentation
 
-```typescript
-// Server procedure
-export const appRouter = createTRPCRouter({
-  hello: publicProcedure
-    .input(z.object({ text: z.string() }))
-    .query(({ input }) => {
-      return { greeting: `Hello ${input.text}!` };
-    }),
-});
-
-// Client usage
-const { data } = useQuery(trpc.hello.queryOptions({ text: "World" }));
-```
-
-### Database with RLS
-
-Secure database access with Clerk JWT:
-
-```typescript
-// In your procedures
-const { data } = await ctx.secureDb.rls(async (tx) => {
-  return tx.select().from(users).where(eq(users.id, ctx.user.id));
-});
-```
-
-## Scripts
-
-| Command           | Description                     |
-| ----------------- | ------------------------------- |
-| `pnpm dev:web`    | Start web client dev server     |
-| `pnpm dev:llm`    | Start LLM service dev server    |
-| `pnpm build:web`  | Build web client for production |
-| `pnpm db:push`    | Push schema changes to database |
-| `pnpm db:studio`  | Open Drizzle Studio             |
-| `pnpm supa:start` | Start local Supabase            |
-| `pnpm supa:stop`  | Stop local Supabase             |
-
-## Environment Variables
-
-### Web Client
-
-```env
-# Database
-DATABASE_URL=postgresql://...
-
-# Clerk
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
-CLERK_SECRET_KEY=sk_...
-
-# App
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-### LLM Service
-
-```env
-# Server
-PORT=3001
-
-# MongoDB
-MONGODB_URI=mongodb://localhost:27017/starter
-
-# Gemini AI
-GEMINI_API_KEY=your_key_here
-```
+| Doc                                                   | Purpose                                                                 |
+| ----------------------------------------------------- | ----------------------------------------------------------------------- |
+| [BACKEND_API_GUIDE.md](src/docs/BACKEND_API_GUIDE.md) | Recruiter API reference (procedures, usage examples, Nova scoring flow) |
+| [TRPC_USAGE_GUIDE.md](src/docs/TRPC_USAGE_GUIDE.md)   | tRPC + TanStack Query patterns (queries, mutations, SSR prefetch)       |
+| [MOBILE_CLIENT.md](src/docs/MOBILE_CLIENT.md)         | Hono REST API endpoints for mobile / external clients                   |
+| [THEME_DEFINITIONS.md](src/docs/THEME_DEFINITIONS.md) | CSS variable → Tailwind class mapping reference                         |
+| [Theme README](src/services/theme/README.md)          | Theme engine architecture, presets, editor, color utils                 |
 
 ## License
 
