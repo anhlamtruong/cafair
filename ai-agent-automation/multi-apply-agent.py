@@ -1,8 +1,11 @@
 from concurrent.futures import ThreadPoolExecutor
 from nova_act import NovaAct
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
-API_KEY = "272a17d0-f378-4c2f-a453-98b9a9800ee8"
+API_KEY = os.getenv("NOVA_API_KEY")
 
 
 def apply_workflow(start_index):

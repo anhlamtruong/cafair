@@ -56,3 +56,4 @@ config.local.json
 # Secrets
 secrets.json
 credentials.json
+.env
