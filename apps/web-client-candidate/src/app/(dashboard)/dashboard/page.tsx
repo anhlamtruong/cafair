@@ -1,66 +1,50 @@
 "use client";
 
-import { useTRPC } from "@/trpc/client";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@starter/ui/card";
-import Link from "next/link";
-import { AsyncBoundary } from "@/components/async-boundary";
+/**
+ * Dashboard page — Figma node 2172:1215
+ *
+ * Composed of three bento sections stacked vertically:
+ *   1. DashboardHeader  (with insight bar)
+ *   2. StatTileGrid     (4 summary tiles wrapped in a bento card)
+ *   3. ApplicationPipeline (pipeline circles + quick stats in a bento card)
+ *
+ * Page-level stagger orchestration via framer-motion.
+ */
+
+import { motion } from "framer-motion";
+import { fadeSlideUp, staggerContainerMedium } from "@/lib/motion";
+import { DashboardHeader } from "@/components/dashboard/dashboard-header";
+import { StatTileGrid } from "@/components/dashboard/stat-tile-grid";
+import { ApplicationPipeline } from "@/components/dashboard/application-pipeline";
 
 export default function DashboardPage() {
-  const trpc = useTRPC();
-
-  const { data, isLoading } = useQuery(trpc.protectedHello.queryOptions());
-
   return (
-    <AsyncBoundary>
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Welcome back!</h2>
-          <p className="text-muted-foreground">
-            Here&apos;s your dashboard overview.
-          </p>
-        </div>
+    <motion.div
+      className="flex flex-col gap-4"
+      variants={staggerContainerMedium}
+      initial="hidden"
+      animate="show"
+    >
+      {/* Bento row 1 — Header with insight bar */}
+      <motion.div variants={fadeSlideUp}>
+        <DashboardHeader showInsightBar />
+      </motion.div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>Hello Message</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="h-6 w-48 animate-pulse rounded-md bg-muted" />
-              ) : (
-                <p className="text-lg">{data?.greeting}</p>
-              )}
-            </CardContent>
-          </Card>
+      {/* Bento row 2 — Stat tiles */}
+      <motion.div
+        className="rounded-2xl bg-bg-primary px-4 py-5"
+        variants={fadeSlideUp}
+      >
+        <StatTileGrid />
+      </motion.div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Link
-                href="/theme-editor"
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                🎨 Theme Editor
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Statistics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Add your metrics and charts.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </AsyncBoundary>
+      {/* Bento row 3 — Application Pipeline */}
+      <motion.div
+        className="rounded-2xl bg-bg-primary px-4 py-5"
+        variants={fadeSlideUp}
+      >
+        <ApplicationPipeline />
+      </motion.div>
+    </motion.div>
   );
 }

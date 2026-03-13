@@ -10,13 +10,19 @@ import { supabaseAdmin, USER_UPLOADS_BUCKET } from "@/lib/supabase";
 // ── Constants ───────────────────────────────────────────────────────────
 
 const FILES_PREFIX = "files";
+const RESUMES_PREFIX = "resumes";
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
   "image/heic",
 ]);
+const ALLOWED_FILE_TYPES = new Set([
+  ...ALLOWED_MIME_TYPES,
+  "application/pdf",
+]);
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_RESUME_SIZE = 20 * 1024 * 1024; // 20 MB
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -52,6 +58,24 @@ export function validateImageFile(mimeType: string, size: number): void {
   }
 }
 
+/**
+ * Validate a resume file (PDF + images, up to 20 MB).
+ */
+export function validateResumeFile(mimeType: string, size: number): void {
+  if (!ALLOWED_FILE_TYPES.has(mimeType)) {
+    throw new UploadError(
+      400,
+      `Invalid file type: ${mimeType}. Allowed: ${[...ALLOWED_FILE_TYPES].join(", ")}`,
+    );
+  }
+  if (size > MAX_RESUME_SIZE) {
+    throw new UploadError(
+      400,
+      `File too large: ${(size / 1024 / 1024).toFixed(1)}MB. Max: 20MB`,
+    );
+  }
+}
+
 // ── Upload ──────────────────────────────────────────────────────────────
 
 /**
@@ -79,6 +103,43 @@ export async function uploadFile(
   if (error) {
     console.error("[upload] Supabase storage error:", error);
     throw new UploadError(500, `Upload failed: ${error.message}`);
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabaseAdmin.storage.from(USER_UPLOADS_BUCKET).getPublicUrl(data.path);
+
+  return {
+    url: publicUrl,
+    path: data.path,
+  };
+}
+
+/**
+ * Upload a resume PDF for a user.
+ *
+ * Storage path: `{userId}/resumes/{timestamp}-{fileName}`
+ */
+export async function uploadResume(
+  userId: string,
+  file: Buffer | Uint8Array,
+  fileName: string,
+  mimeType: string,
+): Promise<UploadResult> {
+  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const timestamp = Date.now();
+  const storagePath = `${userId}/${RESUMES_PREFIX}/${timestamp}-${safeName}`;
+
+  const { data, error } = await supabaseAdmin.storage
+    .from(USER_UPLOADS_BUCKET)
+    .upload(storagePath, file, {
+      contentType: mimeType,
+      upsert: false,
+    });
+
+  if (error) {
+    console.error("[upload] Supabase resume upload error:", error);
+    throw new UploadError(500, `Resume upload failed: ${error.message}`);
   }
 
   const {

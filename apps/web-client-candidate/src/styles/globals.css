@@ -3,81 +3,168 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Light theme (default)
+   Maps to brandGreen preset from the theme service. Values here act as
+   fallbacks; the theme service overrides them at runtime via inline styles.
+   ────────────────────────────────────────────────────────────────────────── */
 :root {
-  --background: #f6f7f5;
-  --foreground: #1a2e1a;
+  /* --- Base Colors --- */
+  --background: #ffffff;
+  --foreground: #111827;
+
+  /* --- Surface Colors --- */
   --card: #ffffff;
-  --card-foreground: #1a2e1a;
+  --card-foreground: #111827;
   --popover: #ffffff;
-  --popover-foreground: #1a2e1a;
-  --primary: #2d6a4f;
+  --popover-foreground: #111827;
+
+  /* --- Brand / Primary --- */
+  --primary: #2eb857;
   --primary-foreground: #ffffff;
-  --secondary: #eef2ed;
-  --secondary-foreground: #2d3b2d;
-  --muted: #eef2ed;
-  --muted-foreground: #5c6b5c;
-  --accent: #e8f0e6;
-  --accent-foreground: #2d6a4f;
-  --destructive: #c53030;
+
+  /* --- Secondary & Muted --- */
+  --secondary: #f1f3f7;
+  --secondary-foreground: #111827;
+  --muted: #f7f9fb;
+  --muted-foreground: #6b7280;
+  --accent: #ebf5ee;
+  --accent-foreground: #1f6b43;
+
+  /* --- Semantic --- */
+  --destructive: #991b1b;
   --destructive-foreground: #ffffff;
-  --border: #d4ddd2;
-  --input: #d4ddd2;
-  --ring: #2d6a4f;
-  --chart-1: #2d6a4f;
-  --chart-2: #40916c;
-  --chart-3: #b7791f;
-  --chart-4: #c53030;
-  --chart-5: #6b46c1;
+
+  /* --- Borders & Inputs --- */
+  --border: #e2e8e5;
+  --input: #e2e8e5;
+  --ring: #2eb857;
+
+  /* --- Charts --- */
+  --chart-1: #2eb857;
+  --chart-2: #3b82f6;
+  --chart-3: #92400e;
+  --chart-4: #22c55e;
+  --chart-5: #6b7280;
+
+  /* --- Radius --- */
   --radius: 0.625rem;
 
-  /* Sidebar — soft green-tinted white */
-  --sidebar-bg: #f0f4ee;
-  --sidebar-foreground: #5c6b5c;
-  --sidebar-primary: #2d6a4f;
+  /* --- Sidebar --- */
+  --sidebar-bg: #f7f9fb;
+  --sidebar-foreground: #111827;
+  --sidebar-primary: #2eb857;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e2ebe0;
-  --sidebar-accent-foreground: #1a2e1a;
-  --sidebar-border: #d4ddd2;
-  --sidebar-muted: #8a9a89;
+  --sidebar-accent: #e2e8e5;
+  --sidebar-accent-foreground: #111827;
+  --sidebar-border: #e2e8e5;
+  --sidebar-muted: #6b7280;
+
+  /* --- Bento-box extended tokens (Figma design) ---
+     Used by the sidebar active state, header brand text, gradient buttons, etc.
+     The theme service does NOT manage these yet. */
+  --bg-primary: #f7f9fb; /* Bento card backgrounds (same as sidebar) */
+  --text-brand: #0e3d27; /* TODO-hard code color — brand 900, active nav text & header */
+  --text-secondary: #4b5563; /* Neutral 600 — inactive nav text */
+  --text-tertiary: #6b7280; /* Neutral 500 — helper text */
+  --brand-50: #e8f5ee; /* Active sidebar item bg */
+  --brand-700: #1f6b43; /* Active sidebar left-border */
+  --brand-900: #0e3d27; /* Gradient dark end */
+  --brand-300: #6fbf9a; /* Pipeline mid ring */
+  --neutral-0: #ffffff; /* Pure white */
+  --neutral-200: #e2e8e5; /* Border/separator */
+  --neutral-400: #9ca3af; /* Muted placeholder */
+  --neutral-900: #111827; /* Foreground */
+  --text-ondark: #abdd64; /* TODO-hard code color — accent text on dark cards */
+  --border-neutral: #e2e8e5; /* Thin dividers */
+  --brand-100: #cde9db; /* TODO-hard code color — Quick Stats highlight card bg */
+  --brand-500: #2e8b57; /* TODO-hard code color — illustration gradient midpoint */
+  --bg-brand: #e8f5ee; /* TODO-hard code color — Pipeline reviewing ring bg */
+  --text-brand-2: #1f6b43; /* TODO-hard code color — Pipeline inner circles, illustration */
+
+  /* --- Package management extended tokens (Figma "other/waring") --- */
+  --other-warning-bg: #fef3c7; /* AI GENERATED badge bg, Draft badge fill */
+  --other-warning-text: #92400e; /* Draft badge text, AI label text */
+  --other-error-text: #991b1b; /* AI badge sparkle icon (matches --destructive) */
+  --bg-secondary: #e2e8e5; /* Progress bar track */
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Dark theme
+   ────────────────────────────────────────────────────────────────────────── */
 .dark {
-  --background: #121a12;
-  --foreground: #dce5db;
-  --card: #1a261a;
-  --card-foreground: #dce5db;
-  --popover: #1a261a;
-  --popover-foreground: #dce5db;
-  --primary: #52b788;
-  --primary-foreground: #0b1a0b;
-  --secondary: #223322;
-  --secondary-foreground: #dce5db;
-  --muted: #223322;
-  --muted-foreground: #8a9a89;
-  --accent: rgba(82, 183, 136, 0.1);
-  --accent-foreground: #74d4a4;
-  --destructive: #f87171;
-  --destructive-foreground: #0a0a0a;
-  --border: #2a3a2a;
-  --input: #223322;
-  --ring: #52b788;
-  --chart-1: #52b788;
-  --chart-2: #40916c;
-  --chart-3: #fbbf24;
-  --chart-4: #f87171;
-  --chart-5: #a78bfa;
+  --background: #111827;
+  --foreground: #f7f9fb;
 
-  --sidebar-bg: #0f1a0f;
-  --sidebar-foreground: #8a9a89;
-  --sidebar-primary: #52b788;
-  --sidebar-primary-foreground: #0b1a0b;
-  --sidebar-accent: #223322;
-  --sidebar-accent-foreground: #dce5db;
-  --sidebar-border: #2a3a2a;
-  --sidebar-muted: #5c6b5c;
+  --card: #111827;
+  --card-foreground: #f7f9fb;
+  --popover: #111827;
+  --popover-foreground: #f7f9fb;
+
+  --primary: #2eb857;
+  --primary-foreground: #ffffff;
+
+  --secondary: #4b5563;
+  --secondary-foreground: #f7f9fb;
+  --muted: #4b5563;
+  --muted-foreground: #9ca3af;
+  --accent: #0e3027;
+  --accent-foreground: #cde9d8;
+
+  --destructive: #fee2e2;
+  --destructive-foreground: #991b1b;
+
+  --border: #4b5563;
+  --input: #4b5563;
+  --ring: #2eb857;
+
+  --chart-1: #2eb857;
+  --chart-2: #3b82f6;
+  --chart-3: #fef3c7;
+  --chart-4: #22c55e;
+  --chart-5: #9ca3af;
+
+  --sidebar-bg: #111827;
+  --sidebar-foreground: #f7f9fb;
+  --sidebar-primary: #2eb857;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #4b5563;
+  --sidebar-accent-foreground: #f7f9fb;
+  --sidebar-border: #4b5563;
+  --sidebar-muted: #6b7280;
+
+  /* --- Bento-box extended (dark) --- */
+  --bg-primary: #1f2937; /* TODO-hard code color — dark surface card */
+  --text-brand: #cde9d8; /* TODO-hard code color — brand text in dark */
+  --text-secondary: #9ca3af;
+  --text-tertiary: #6b7280;
+  --brand-50: #0e3027;
+  --brand-700: #6fbf9a;
+  --brand-900: #0e3027;
+  --brand-300: #2eb857;
+  --neutral-0: #111827;
+  --neutral-200: #4b5563;
+  --neutral-400: #6b7280;
+  --neutral-900: #f7f9fb;
+  --text-ondark: #abdd64; /* TODO-hard code color */
+  --border-neutral: #4b5563;
+  --brand-100: #1a3d2e; /* TODO-hard code color — dark: Quick Stats highlight card bg */
+  --brand-500: #2e8b57; /* TODO-hard code color */
+  --bg-brand: #0e3027; /* TODO-hard code color — dark: Pipeline reviewing ring bg */
+  --text-brand-2: #6fbf9a; /* TODO-hard code color — dark: Pipeline inner circles */
+
+  /* --- Package management extended tokens (dark) --- */
+  --other-warning-bg: #451a03;
+  --other-warning-text: #fbbf24;
+  --other-error-text: #fca5a5;
+  --bg-secondary: #374151;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Tailwind v4 theme inline — bridge CSS vars to Tailwind utility classes
+   ────────────────────────────────────────────────────────────────────────── */
 @theme inline {
+  /* Standard shadcn/ui tokens */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -102,6 +189,8 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
+  /* Sidebar tokens */
   --color-sidebar-bg: var(--sidebar-bg);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -110,10 +199,89 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-muted: var(--sidebar-muted);
+
+  /* Bento-box extended tokens */
+  --color-bg-primary: var(--bg-primary);
+  --color-text-brand: var(--text-brand);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-brand-50: var(--brand-50);
+  --color-brand-700: var(--brand-700);
+  --color-brand-900: var(--brand-900);
+  --color-brand-300: var(--brand-300);
+  --color-neutral-0: var(--neutral-0);
+  --color-neutral-200: var(--neutral-200);
+  --color-neutral-400: var(--neutral-400);
+  --color-neutral-900: var(--neutral-900);
+  --color-text-ondark: var(--text-ondark);
+  --color-border-neutral: var(--border-neutral);
+  --color-brand-100: var(--brand-100);
+  --color-brand-500: var(--brand-500);
+  --color-bg-brand: var(--bg-brand);
+  --color-text-brand-2: var(--text-brand-2);
+
+  /* Package management tokens */
+  --color-other-warning-bg: var(--other-warning-bg);
+  --color-other-warning-text: var(--other-warning-text);
+  --color-other-error-text: var(--other-error-text);
+  --color-bg-secondary: var(--bg-secondary);
+
+  /* Radius */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* ── Dashboard micro-animation keyframes ─────────────────────────────── */
+
+@keyframes softPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(46, 139, 87, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(46, 139, 87, 0.08);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.015);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes sway {
+  0%,
+  100% {
+    transform: rotate(var(--sway-base, 0deg));
+  }
+  50% {
+    transform: rotate(calc(var(--sway-base, 0deg) + var(--sway-amount, 1deg)));
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 @layer base {

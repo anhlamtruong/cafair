@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { usersRouter } from "@/services/users/procedures";
 import { examplesRouter } from "@/services/examples/procedures";
 import { uploadsRouter } from "@/services/uploads/procedures";
-import { recruiterRouter } from "@/services/recruiter/procedures";
+import { packagesRouter } from "@/services/packages";
 
 export const appRouter = createTRPCRouter({
   hello: publicProcedure
@@ -42,7 +42,7 @@ export const appRouter = createTRPCRouter({
   users: usersRouter,
   examples: examplesRouter,
   uploads: uploadsRouter,
-  recruiter: recruiterRouter,
+  packages: packagesRouter,
 });
 
 export type AppRouter = typeof appRouter;

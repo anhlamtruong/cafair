@@ -2119,4 +2119,108 @@ export const defaultPresets: Record<string, ThemePreset> = {
       },
     },
   },
+  brandGreen: {
+    label: "Brand Green",
+
+    styles: {
+      light: {
+        // --- Base Colors ---
+        background: "#ffffff", // Neutral 0
+        foreground: "#111827", // Neutral 900 for highest text contrast
+
+        // --- Surface Colors (Cards, Dropdowns, etc.) ---
+        card: "#ffffff", // Neutral 0
+        "card-foreground": "#111827", // Neutral 900
+        popover: "#ffffff", // Neutral 0
+        "popover-foreground": "#111827", // Neutral 900
+
+        // --- Brand/Primary Colors ---
+        primary: "#2eb857", // Brand 500 (Core brand color)
+        "primary-foreground": "#ffffff", // Neutral 0 for readable text on primary buttons
+
+        // --- Secondary & Muted Elements ---
+        secondary: "#f1f3f7", // Slightly darker than Neutral 50 for subtle separation
+        "secondary-foreground": "#111827", // Neutral 900
+        muted: "#f7f9fb", // Neutral 50 for muted backgrounds
+        "muted-foreground": "#6b7280", // Neutral 500 for secondary text
+        accent: "#ebf5ee", // Brand 50 for a subtle tinted hover state
+        "accent-foreground": "#1f6b43", // Brand 700 for text on accent backgrounds
+
+        // --- Semantic/State Colors ---
+        destructive: "#991b1b", // Error Text
+        "destructive-foreground": "#ffffff", // Neutral 0
+
+        // --- Borders & Inputs ---
+        border: "#e2e8e5", // Neutral 200
+        input: "#e2e8e5", // Neutral 200
+        ring: "#2eb857", // Brand 500 for focus rings
+
+        // --- Data Visualization (Mapped from Semantic & Brand) ---
+        "chart-1": "#2eb857", // Brand 500
+        "chart-2": "#3b82f6", // Info
+        "chart-3": "#92400e", // Warning Text
+        "chart-4": "#22c55e", // Success
+        "chart-5": "#6b7280", // Neutral 500
+
+        // --- Sidebar ---
+        sidebar: "#f7f9fb", // Neutral 50 for slight contrast against the main background
+        "sidebar-foreground": "#111827", // Neutral 900
+        "sidebar-primary": "#2eb857", // Brand 500
+        "sidebar-primary-foreground": "#ffffff", // Neutral 0
+        "sidebar-accent": "#e2e8e5", // Neutral 200 for sidebar hovers
+        "sidebar-accent-foreground": "#111827", // Neutral 900
+        "sidebar-border": "#e2e8e5", // Neutral 200
+        "sidebar-ring": "#2eb857", // Brand 500
+      },
+      dark: {
+        // --- Base Colors (Inverted) ---
+        background: "#111827", // Neutral 900
+        foreground: "#f7f9fb", // Neutral 50 for readable light text
+
+        // --- Surface Colors ---
+        card: "#111827", // Neutral 900 (Blends with background, relying on borders)
+        "card-foreground": "#f7f9fb", // Neutral 50
+        popover: "#111827", // Neutral 900
+        "popover-foreground": "#f7f9fb", // Neutral 50
+
+        // --- Brand/Primary Colors ---
+        primary: "#2eb857", // Brand 500 remains consistent in dark mode
+        "primary-foreground": "#ffffff", // Neutral 0
+
+        // --- Secondary & Muted Elements ---
+        secondary: "#4b5563", // Neutral 600 for dark mode secondary elements
+        "secondary-foreground": "#f7f9fb", // Neutral 50
+        muted: "#4b5563", // Neutral 600
+        "muted-foreground": "#9ca3af", // Neutral 400 for dark mode muted text
+        accent: "#0e3027", // Brand 900 for dark mode tinted backgrounds
+        "accent-foreground": "#cde9d8", // Brand 100 for high-contrast accent text
+
+        // --- Semantic/State Colors ---
+        destructive: "#fee2e2", // Error BG used as a lighter destructive indicator in dark mode
+        "destructive-foreground": "#991b1b", // Error Text
+
+        // --- Borders & Inputs ---
+        border: "#4b5563", // Neutral 600
+        input: "#4b5563", // Neutral 600
+        ring: "#2eb857", // Brand 500
+
+        // --- Data Visualization ---
+        "chart-1": "#2eb857", // Brand 500
+        "chart-2": "#3b82f6", // Info
+        "chart-3": "#fef3c7", // Warning BG used for contrast
+        "chart-4": "#22c55e", // Success
+        "chart-5": "#9ca3af", // Neutral 400
+
+        // --- Sidebar ---
+        sidebar: "#111827", // Neutral 900
+        "sidebar-foreground": "#f7f9fb", // Neutral 50
+        "sidebar-primary": "#2eb857", // Brand 500
+        "sidebar-primary-foreground": "#ffffff", // Neutral 0
+        "sidebar-accent": "#4b5563", // Neutral 600
+        "sidebar-accent-foreground": "#f7f9fb", // Neutral 50
+        "sidebar-border": "#4b5563", // Neutral 600
+        "sidebar-ring": "#2eb857", // Brand 500
+      },
+    },
+  },
 };
