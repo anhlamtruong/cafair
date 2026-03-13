@@ -4,7 +4,9 @@ Local Amazon Nova Act runner for the AI Hire recruiter app.
 
 This script opens the local recruiter app in a visible browser, waits for the
 human to sign in manually, then asks Nova Act to continue as a recruiter and
-open the pre-fair candidate pool before selecting the first visible candidate.
+open the pre-fair candidate pool before selecting the first visible candidate,
+continuing through the candidate review scheduling flow, and drafting a demo
+message in Conversation.
 
 Examples:
     python3 apps/agents/scripts/run-our-app.py --debug-logs --prefer-chrome
@@ -139,7 +141,7 @@ def wait_for_manual_login(message: str) -> None:
 def build_recruiter_instruction(base_url: str) -> str:
     steps: List[str] = [
         "1. You are acting as a recruiter using the AI Hire recruiting platform in a live browser session.",
-        "2. This is a read-only navigation task. Do not approve, reject, edit, sync, send, submit, or delete anything.",
+        "2. This is a focused recruiter workflow task. You may click checkboxes, Review, and Confirm Schedule when the target flow calls for them, but do not approve, reject, delete, sync, or send unrelated actions.",
         "3. The human operator has already signed in manually before you begin acting.",
         f"4. Start from the current authenticated app session. If needed, navigate to {base_url} and wait for the app to finish loading.",
         "5. Confirm that the recruiter dashboard or Hiring Center is visible before proceeding.",
@@ -160,9 +162,28 @@ def build_recruiter_instruction(base_url: str) -> str:
         "20. If the task is not in the Urgent area, continue scanning visible drawer sections such as Upcoming without leaving the task drawer.",
         "21. Click the 'Review pre-fair candidate pool' task once when you find it.",
         "22. Wait for the resulting destination page, modal, drawer, or candidate list to load fully before interacting again.",
-        "23. Identify the first visible candidate entry in that pre-fair pool. This may appear as a row, card, or list item.",
-        "24. Click the first visible candidate exactly once.",
-        "25. Stop immediately after the first candidate opens and hand control back to the operator.",
+        "23. After the task flow opens the candidate area, move to the left sidebar and find 'Candidate Queue'.",
+        "24. Click 'Candidate Queue' once if you are not already there.",
+        "25. Wait for the queue table or candidate list to finish loading.",
+        "26. In the queue list, look for visible selection checkboxes next to candidate rows.",
+        "27. Check a couple of candidate boxes, preferably the first two visible selectable rows. Use exactly two if possible.",
+        "28. After checking the boxes, identify the first visible candidate row in the queue.",
+        "29. Click the first candidate row or first candidate name once to open that candidate detail page.",
+        "30. Wait for the candidate detail page to load fully. Strong cues include the candidate name header, stage progress bar, and a Debate Summary card.",
+        "31. On the candidate detail page, find the 'Review' button in the recommendation area.",
+        "32. Click 'Review' once.",
+        "33. Wait for the next scheduling confirmation state, modal, or action panel to appear.",
+        "34. Find the button labeled 'Confirm Schedule'.",
+        "35. Click 'Confirm Schedule' once.",
+        "36. Wait for the confirmation UI to settle after Confirm Schedule.",
+        "37. Move back to the left sidebar and find 'Conversation'.",
+        "38. Click 'Conversation' once.",
+        "39. Wait for the Conversation page or messaging UI to load fully.",
+        "40. Look for the message composer or chat input box for Lam Anh Truong.",
+        "41. Click into the message input area.",
+        "42. Type this exact demo message: Lam, we're excited to share that we'd like to extend an offer for the Head of AWS Cloud! You were our top candidate.",
+        "43. Do not send the message unless the operator explicitly asks you to send it.",
+        "44. Stop after the full message is visible in the composer and hand control back to the operator.",
     ]
 
     visual_cues: List[str] = [
@@ -170,6 +191,10 @@ def build_recruiter_instruction(base_url: str) -> str:
         "Task drawer cues: 'My Tasks', 'Urgent', 'Due Today', 'Upcoming'.",
         "Known non-target tasks: 'Review shortlist for PM role', 'Approve offer for Sarah Chen', 'Sync 8 candidates to ATS'.",
         "Target task wording: 'Review pre-fair candidate pool'.",
+        "Candidate Queue cues: a queue table with row checkboxes and candidate names.",
+        "Candidate detail cues: candidate name header, stage progress row, Debate Summary, and a 'Review' button.",
+        "Scheduling cue: a visible 'Confirm Schedule' button after entering the review flow.",
+        "Conversation cues: a left-sidebar 'Conversation' entry and a visible message composer or chat input box.",
     ]
 
     guidance: List[str] = [
@@ -179,18 +204,21 @@ def build_recruiter_instruction(base_url: str) -> str:
         "If a modal or drawer is part of the intended flow, work inside it rather than dismissing it.",
         "If you cannot find an element immediately, scan nearby headings, cards, buttons, and task labels before guessing.",
         "If a label differs slightly, choose the closest recruiter-task wording that clearly matches the goal.",
-        "Do not click destructive or decision-making controls such as Approve, Reject, Send, Sync, Edit, Review All, or Close unless absolutely required for the stated goal.",
+        "Only click controls that support the target flow: Candidate Queue, row checkboxes, the first candidate, Review, Confirm Schedule, Conversation, and the message composer.",
+        "Do not click destructive or unrelated decision-making controls such as Approve, Reject, Send, Sync, Edit, Review All, Accept, Dismiss, or Close unless absolutely required for the stated goal.",
         "Use the screenshots as visual guidance for layout and wording.",
-        "Stop as soon as the first candidate is opened.",
+        "Type the demo message exactly as provided.",
+        "Do not send the message unless the operator explicitly asks for that final action.",
+        "After the message is typed, stop and do nothing else.",
     ]
 
     return "\n".join(
         [
             "You are controlling a browser for a recruiter using our AI Hire platform.",
-            "Follow the numbered steps exactly and keep the session safe and read-only.",
+            "Follow the numbered steps exactly and keep the session safe and focused on the requested workflow.",
             "",
             "Primary goal:",
-            "Open the recruiter task flow from Hiring Center and open the first candidate in the pre-fair candidate pool.",
+            "Open the recruiter task flow from Hiring Center, continue into Candidate Queue, select a couple of candidates, open the first candidate, click Review and Confirm Schedule, then go to Conversation and draft the demo offer message for Lam.",
             "",
             "Step plan:",
             *steps,
