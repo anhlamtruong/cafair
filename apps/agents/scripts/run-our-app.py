@@ -4,13 +4,16 @@ Local Amazon Nova Act runner for the AI Hire recruiter app.
 
 This script opens the local recruiter app in a visible browser, waits for the
 human to sign in manually, then asks Nova Act to continue as a recruiter and
-open the pre-fair candidate pool before selecting the first visible candidate,
-continuing through the candidate review scheduling flow, and drafting a demo
-message in Conversation.
+run a longer demo workflow:
+- Hiring Center task flow
+- Candidate Queue selection
+- Candidate review scheduling
+- Conversation draft message for Lam
 
 Examples:
     python3 apps/agents/scripts/run-our-app.py --debug-logs --prefer-chrome
     python3 apps/agents/scripts/run-our-app.py --base-url http://localhost:3002/hiring-center
+    python3 apps/agents/scripts/run-our-app.py --print-prompt
 """
 
 from __future__ import annotations
@@ -33,8 +36,8 @@ except Exception:
 
 
 DEFAULT_BASE_URL = "http://localhost:3002/hiring-center"
-DEFAULT_TIMEOUT_SECONDS = 180
-DEFAULT_MAX_STEPS = 30
+DEFAULT_TIMEOUT_SECONDS = 240
+DEFAULT_MAX_STEPS = 50
 DEFAULT_OBSERVATION_DELAY_MS = 900
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -141,49 +144,50 @@ def wait_for_manual_login(message: str) -> None:
 def build_recruiter_instruction(base_url: str) -> str:
     steps: List[str] = [
         "1. You are acting as a recruiter using the AI Hire recruiting platform in a live browser session.",
-        "2. This is a focused recruiter workflow task. You may click checkboxes, Review, and Confirm Schedule when the target flow calls for them, but do not approve, reject, delete, sync, or send unrelated actions.",
-        "3. The human operator has already signed in manually before you begin acting.",
-        f"4. Start from the current authenticated app session. If needed, navigate to {base_url} and wait for the app to finish loading.",
-        "5. Confirm that the recruiter dashboard or Hiring Center is visible before proceeding.",
-        "6. Strong page clues include a greeting like 'Hi Tran!' or 'Welcome back', a left sidebar, recruiter metric cards, and a green 'Show my Tasks' button.",
-        "7. Anchor on the left navigation rail and read the visible entries carefully.",
-        "8. Find the sidebar item labeled 'Hiring Center'.",
-        "9. If Hiring Center is not already selected, click it exactly once.",
-        "10. Wait for the Hiring Center page to settle completely. Allow time for cards, buttons, drawers, and transitions to finish rendering.",
-        "11. Verify you are on the correct page by looking for the greeting area, the date block, the green 'Show my Tasks' button, and cards such as New applicants, Moved to Interview, Auto-screened out, Flagged issues, or Offer drafted.",
-        "12. Move your attention to the green 'Show my Tasks' button near the top portion of the Hiring Center page.",
-        "13. Click 'Show my Tasks' once.",
-        "14. Wait for the task drawer or task frame to open on the right side. Do not click the background while the drawer is still animating.",
-        "15. Once the drawer is visible, read the header and visible sections carefully. Useful cues include 'My Tasks', 'Urgent', 'Due Today', and 'Upcoming'.",
-        "16. If there is an Urgent tab or Urgent section selector, prefer it. If urgent tasks are already visible by default, do not waste a click reselecting it.",
-        "17. Scan the visible task list carefully from top to bottom before choosing any task.",
-        "18. Avoid non-target tasks such as PM shortlist review, Sarah Chen offer approval, ATS sync, rejection emails, scheduling interviews, or rubric updates.",
-        "19. Find the task whose visible wording matches or is closest to 'Review pre-fair candidate pool'.",
-        "20. If the task is not in the Urgent area, continue scanning visible drawer sections such as Upcoming without leaving the task drawer.",
-        "21. Click the 'Review pre-fair candidate pool' task once when you find it.",
-        "22. Wait for the resulting destination page, modal, drawer, or candidate list to load fully before interacting again.",
-        "23. After the task flow opens the candidate area, move to the left sidebar and find 'Candidate Queue'.",
-        "24. Click 'Candidate Queue' once if you are not already there.",
-        "25. Wait for the queue table or candidate list to finish loading.",
-        "26. In the queue list, look for visible selection checkboxes next to candidate rows.",
-        "27. Check a couple of candidate boxes, preferably the first two visible selectable rows. Use exactly two if possible.",
-        "28. After checking the boxes, identify the first visible candidate row in the queue.",
-        "29. Click the first candidate row or first candidate name once to open that candidate detail page.",
-        "30. Wait for the candidate detail page to load fully. Strong cues include the candidate name header, stage progress bar, and a Debate Summary card.",
-        "31. On the candidate detail page, find the 'Review' button in the recommendation area.",
-        "32. Click 'Review' once.",
-        "33. Wait for the next scheduling confirmation state, modal, or action panel to appear.",
-        "34. Find the button labeled 'Confirm Schedule'.",
-        "35. Click 'Confirm Schedule' once.",
-        "36. Wait for the confirmation UI to settle after Confirm Schedule.",
-        "37. Move back to the left sidebar and find 'Conversation'.",
-        "38. Click 'Conversation' once.",
-        "39. Wait for the Conversation page or messaging UI to load fully.",
-        "40. Look for the message composer or chat input box for Lam Anh Truong.",
-        "41. Click into the message input area.",
-        "42. Type this exact demo message: Lam, we're excited to share that we'd like to extend an offer for the Head of AWS Cloud! You were our top candidate.",
-        "43. Do not send the message unless the operator explicitly asks you to send it.",
-        "44. Stop after the full message is visible in the composer and hand control back to the operator.",
+        "2. This is a focused recruiter workflow task. You may click checkboxes, Review, Confirm Schedule, Conversation, and the message composer when needed for the demo flow.",
+        "3. Do not approve, reject, delete, sync, or send unrelated actions.",
+        "4. The human operator has already signed in manually before you begin acting.",
+        f"5. Start from the current authenticated app session. If needed, navigate to {base_url} and wait for the app to finish loading.",
+        "6. Confirm that the recruiter dashboard or Hiring Center is visible before proceeding.",
+        "7. Strong page clues include a greeting like 'Hi Tran!' or 'Welcome back', a left sidebar, recruiter metric cards, and a green 'Show my Tasks' button.",
+        "8. Anchor on the left navigation rail and read the visible entries carefully.",
+        "9. Find the sidebar item labeled 'Hiring Center'.",
+        "10. If Hiring Center is not already selected, click it exactly once.",
+        "11. Wait for the Hiring Center page to settle completely. Allow time for cards, buttons, drawers, and transitions to finish rendering.",
+        "12. Verify you are on the correct page by looking for the greeting area, the date block, the green 'Show my Tasks' button, and cards such as New applicants, Moved to Interview, Auto-screened out, Flagged issues, or Offer drafted.",
+        "13. Move your attention to the green 'Show my Tasks' button near the top portion of the Hiring Center page.",
+        "14. Click 'Show my Tasks' once.",
+        "15. Wait for the task drawer or task frame to open on the right side. Do not click the background while the drawer is still animating.",
+        "16. Once the drawer is visible, read the header and visible sections carefully. Useful cues include 'My Tasks', 'Urgent', 'Due Today', and 'Upcoming'.",
+        "17. If there is an Urgent tab or Urgent section selector, prefer it. If urgent tasks are already visible by default, do not waste a click reselecting it.",
+        "18. Scan the visible task list carefully from top to bottom before choosing any task.",
+        "19. Avoid non-target tasks such as PM shortlist review, Sarah Chen offer approval, ATS sync, rejection emails, scheduling interviews, or rubric updates.",
+        "20. Find the task whose visible wording matches or is closest to 'Review pre-fair candidate pool'.",
+        "21. If the task is not in the Urgent area, continue scanning visible drawer sections such as Upcoming without leaving the task drawer.",
+        "22. Click the 'Review pre-fair candidate pool' task once when you find it.",
+        "23. Wait for the resulting destination page, modal, drawer, or candidate list to load fully before interacting again.",
+        "24. After the task flow opens the candidate area, move to the left sidebar and find 'Candidate Queue'.",
+        "25. Click 'Candidate Queue' once if you are not already there.",
+        "26. Wait for the queue table or candidate list to finish loading.",
+        "27. In the queue list, look for visible selection checkboxes next to candidate rows.",
+        "28. Check a couple of candidate boxes, preferably the first two visible selectable rows. Use exactly two if possible.",
+        "29. After checking the boxes, identify the first visible candidate row in the queue.",
+        "30. Click the first candidate row or first candidate name once to open that candidate detail page.",
+        "31. Wait for the candidate detail page to load fully. Strong cues include the candidate name header, stage progress bar, and a Debate Summary card.",
+        "32. On the candidate detail page, find the 'Review' button in the recommendation area.",
+        "33. Click 'Review' once.",
+        "34. Wait for the next scheduling confirmation state, modal, or action panel to appear.",
+        "35. Find the button labeled 'Confirm Schedule'.",
+        "36. Click 'Confirm Schedule' once.",
+        "37. Wait for the confirmation UI to settle after Confirm Schedule.",
+        "38. Move back to the left sidebar and find 'Conversation'.",
+        "39. Click 'Conversation' once.",
+        "40. Wait for the Conversation page or messaging UI to load fully.",
+        "41. Look for the message composer or chat input box for Lam Anh Truong.",
+        "42. Click into the message input area.",
+        "43. Type this exact demo message: Lam, we're excited to share that we'd like to extend an offer for the Head of AWS Cloud! You were our top candidate.",
+        "44. Do not send the message unless the operator explicitly asks you to send it.",
+        "45. Stop after the full message is visible in the composer and hand control back to the operator.",
     ]
 
     visual_cues: List[str] = [
@@ -303,6 +307,12 @@ def main() -> int:
     if args.prefer_chrome:
         os.environ["NOVA_ACT_PREFER_CHROME"] = "1"
 
+    instruction = build_recruiter_instruction(args.base_url)
+
+    if args.print_prompt:
+        print(instruction)
+        return 0
+
     if NovaAct is None:
         eprint(
             "[ERROR] nova_act is not installed in this Python environment. "
@@ -319,12 +329,6 @@ def main() -> int:
 
     if prefer_chrome_enabled():
         configure_local_browser_env_for_chrome()
-
-    instruction = build_recruiter_instruction(args.base_url)
-
-    if args.print_prompt:
-        print(instruction)
-        return 0
 
     if local_debug_enabled():
         eprint(f"[INFO] Starting local recruiter flow at: {args.base_url}")
@@ -343,7 +347,6 @@ def main() -> int:
         ignore_https_errors=should_ignore_https_errors(args.base_url),
         nova_act_api_key=api_key,
     ) as nova:
-        nova.start()
         wait_for_manual_login(
             "\n[MANUAL STEP] The AI Hire app is open in a visible browser.\n"
             "Please sign in manually. After sign-in, wait until you can see the recruiter UI\n"
