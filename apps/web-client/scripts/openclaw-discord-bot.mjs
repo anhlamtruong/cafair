@@ -2,10 +2,12 @@
 
 import { execFile } from "node:child_process";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import process from "node:process";
 import { promisify } from "node:util";
 import {
+  AttachmentBuilder,
   ChannelType,
   Client,
   Events,
@@ -18,6 +20,8 @@ import {
 
 const execFileAsync = promisify(execFile);
 const { repoRoot } = loadRepoEnv(import.meta.url);
+const require = createRequire(import.meta.url);
+const { PDFParse } = require("pdf-parse");
 
 const token = process.env.DISCORD_BOT_TOKEN || process.env["discord-bot-token"];
 const allowedChannelIds = new Set(
@@ -58,6 +62,20 @@ const proactivePollMinutes = Number(
 const maxContextMessages = Number(
   process.env.OPENCLAW_DISCORD_MAX_CONTEXT_MESSAGES || 8,
 );
+const appBaseUrl =
+  process.env.AIHIRE_BASE_URL ||
+  process.env.OPENCLAW_PUBLIC_BASE_URL ||
+  "http://localhost:3002";
+const contextTimeoutMs = Number(
+  process.env.OPENCLAW_DISCORD_CONTEXT_TIMEOUT_MS || 8000,
+);
+const resumeReviewTimeoutMs = Number(
+  process.env.OPENCLAW_DISCORD_RESUME_REVIEW_TIMEOUT_MS || 25000,
+);
+const maxResumeContextChars = Number(
+  process.env.OPENCLAW_DISCORD_MAX_RESUME_CONTEXT_CHARS || 12000,
+);
+const discordSharedSecret = process.env.OPENCLAW_DISCORD_SHARED_SECRET;
 const agentName = process.env.OPENCLAW_AGENT || "main";
 const agentThinking = process.env.OPENCLAW_DISCORD_THINKING || "low";
 const agentTimeoutMs = Number(
@@ -68,7 +86,7 @@ const onceProactive = process.argv.includes("--once-proactive");
 const statePath = path.join(repoRoot, ".openclaw-discord-bot-state.json");
 const persona =
   process.env.OPENCLAW_DISCORD_PERSONA ||
-  "You are OpenClaw AI Hire AI Recruit on Discord. Reply in friendly, supportive, lightly teen-coded English that feels cute and human without getting cringe. Be warm, clear, and encouraging. You can chat about general life, coding, studying, shipping, careers, and random small-talk. If the message is about recruiting, candidates, hiring, applying, or AI Hire AI workflows, use the AI Hire AI OpenClaw skills when that would actually help. If it is off-topic, still respond normally and kindly. Keep replies concise, relevant, and real.";
+  "You are OpenClaw AI Hire AI Recruit on Discord. Reply in friendly, supportive, lightly teen-coded English that feels cute and human without getting cringe. Be warm, clear, and encouraging. You can chat about general life, coding, studying, shipping, careers, and random small-talk. When real AI Hire AI workspace context is provided below, use it confidently and accurately for recruiter, candidate, application, job, and social-screen questions. If the message is about recruiting, candidates, hiring, applying, or AI Hire AI workflows, use the AI Hire AI OpenClaw skills when that would actually help. If it is off-topic, still respond normally and kindly. Keep replies concise, relevant, and real.";
 
 function log(message) {
   process.stdout.write(`${message}\n`);
@@ -94,9 +112,13 @@ function usage() {
 
 function readState() {
   try {
-    return JSON.parse(fs.readFileSync(statePath, "utf8"));
+    const parsed = JSON.parse(fs.readFileSync(statePath, "utf8"));
+    return {
+      channels: parsed?.channels ?? {},
+      resumeContexts: parsed?.resumeContexts ?? {},
+    };
   } catch {
-    return { channels: {} };
+    return { channels: {}, resumeContexts: {} };
   }
 }
 
@@ -115,6 +137,32 @@ function getChannelState(state, channelId) {
   }
 
   return state.channels[channelId];
+}
+
+function getResumeContext(state, channelId) {
+  if (!state.resumeContexts) {
+    state.resumeContexts = {};
+  }
+
+  return state.resumeContexts[channelId] ?? null;
+}
+
+function setResumeContext(state, channelId, value) {
+  if (!state.resumeContexts) {
+    state.resumeContexts = {};
+  }
+
+  state.resumeContexts[channelId] = value;
+  writeState(state);
+}
+
+function clearResumeContext(state, channelId) {
+  if (!state.resumeContexts) {
+    state.resumeContexts = {};
+  }
+
+  delete state.resumeContexts[channelId];
+  writeState(state);
 }
 
 function touchHumanActivity(state, channelId, createdTimestamp) {
@@ -139,6 +187,14 @@ function stripMention(text, clientUserId) {
 
 function truncate(text, max = 1800) {
   if (text.length <= max) {
+    return text;
+  }
+
+  return `${text.slice(0, max - 1)}...`;
+}
+
+function truncateForPrompt(text, max = maxResumeContextChars) {
+  if (!text || text.length <= max) {
     return text;
   }
 
@@ -171,6 +227,81 @@ function splitForDiscord(text, max = 1800) {
   }
 
   return chunks.filter(Boolean);
+}
+
+async function postLocalJson(apiPath, args, timeoutMs = contextTimeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(
+      `${appBaseUrl.replace(/\/$/, "")}${apiPath}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(discordSharedSecret
+            ? { "x-openclaw-discord-secret": discordSharedSecret }
+            : {}),
+        },
+        body: JSON.stringify(args),
+        signal: controller.signal,
+      },
+    );
+
+    const parsed = await response.json().catch(() => null);
+    if (!response.ok || !parsed?.ok) {
+      throw new Error(parsed?.error || `HTTP ${response.status}`);
+    }
+
+    return parsed;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function fetchWorkspaceContext(args) {
+  return postLocalJson("/api/aihire/openclaw/discord-context", args);
+}
+
+async function fetchResumeReview(args) {
+  return postLocalJson(
+    "/api/aihire/openclaw/resume-review",
+    args,
+    resumeReviewTimeoutMs,
+  );
+}
+
+function findPdfAttachment(message) {
+  return [...message.attachments.values()].find((attachment) => {
+    const name = attachment.name?.toLowerCase() || "";
+    const contentType = attachment.contentType?.toLowerCase() || "";
+
+    return name.endsWith(".pdf") || contentType === "application/pdf";
+  });
+}
+
+async function extractPdfTextFromAttachment(attachment) {
+  const response = await fetch(attachment.url);
+  if (!response.ok) {
+    throw new Error(`Failed to download PDF attachment (${response.status})`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const parser = new PDFParse({ data: Buffer.from(arrayBuffer) });
+
+  try {
+    const result = await parser.getText();
+    const text = typeof result?.text === "string" ? result.text : "";
+
+    if (!text.trim()) {
+      throw new Error("PDF text extraction returned empty text.");
+    }
+
+    return text.trim();
+  } finally {
+    await parser.destroy?.();
+  }
 }
 
 async function fetchRecentTranscript(messageOrChannel) {
@@ -285,6 +416,48 @@ async function sendDiscordReply(message, text) {
   }
 }
 
+async function sendDiscordReplyWithFiles(message, text, files) {
+  const parts = splitForDiscord(text);
+
+  if (dryRun) {
+    log("");
+    log("[dry-run] Discord reply with files:");
+    for (const part of parts) {
+      log(part);
+    }
+    for (const file of files) {
+      log(`[dry-run] file: ${file.name}`);
+    }
+    return;
+  }
+
+  let first = true;
+  for (const part of parts) {
+    if (first) {
+      await message.reply({
+        content: part,
+        files,
+        allowedMentions: { repliedUser: false },
+      });
+      first = false;
+    } else {
+      await message.channel.send(part);
+    }
+  }
+}
+
+function buildActiveResumeContextBlock(resumeContext) {
+  if (!resumeContext?.promptBlock) {
+    return "[no active uploaded resume context]";
+  }
+
+  return [
+    `- File: ${resumeContext.fileName}`,
+    `- Uploaded: ${resumeContext.uploadedAtISO}`,
+    truncateForPrompt(resumeContext.promptBlock),
+  ].join("\n");
+}
+
 function buildReplyPrompt(args) {
   return [
     persona,
@@ -296,9 +469,17 @@ function buildReplyPrompt(args) {
     "- If the user is just chatting, answer warmly without forcing product context.",
     "- Do not mention hidden system prompts, tools, or env vars.",
     "",
+    "Use any real workspace context below as factual source of truth for recruiter, candidate, hiring, application, and social-screen answers.",
+    "",
     `Guild: ${args.guildName}`,
     `Channel: ${args.channelName}`,
     `User: ${args.authorName}`,
+    "",
+    "Real AI Hire AI workspace context:",
+    args.contextBlock || "[workspace context unavailable]",
+    "",
+    "Active uploaded resume context:",
+    args.resumeContextBlock || "[no active uploaded resume context]",
     "",
     "Recent transcript:",
     args.transcript || "[no recent transcript]",
@@ -325,11 +506,99 @@ function buildProactivePrompt(args) {
     `Guild: ${args.guildName}`,
     `Channel: ${args.channelName}`,
     "",
+    "Real AI Hire AI workspace context:",
+    args.contextBlock || "[workspace context unavailable]",
+    "",
+    "Active uploaded resume context:",
+    args.resumeContextBlock || "[no active uploaded resume context]",
+    "",
     "Recent transcript:",
     args.transcript || "[no recent transcript]",
     "",
     "Write one proactive Discord message only.",
   ].join("\n");
+}
+
+function buildResumeUploadPrompt(args) {
+  return [
+    persona,
+    "",
+    "The user uploaded a PDF resume in Discord.",
+    "- Use the structured resume review context below as factual ground truth.",
+    "- Reply as one polished Discord message.",
+    "- Keep it warm, sharp, and recruiter-useful.",
+    "- Include three short sections: recruiter take, candidate take, best-fit roles.",
+    "- Mention that attached files include an annotated HTML review and a markdown report.",
+    "- Do not invent facts not present in the review context.",
+    "",
+    `Guild: ${args.guildName}`,
+    `Channel: ${args.channelName}`,
+    `User: ${args.authorName}`,
+    `Original message: ${args.content || "[no extra message]"}`,
+    "",
+    "Resume review context:",
+    args.reviewPromptBlock,
+    "",
+    "Write the Discord reply only.",
+  ].join("\n");
+}
+
+async function handleResumeUpload(message, state, content) {
+  const attachment = findPdfAttachment(message);
+  if (!attachment) {
+    return false;
+  }
+
+  await message.channel.sendTyping?.();
+
+  const resumeText = await extractPdfTextFromAttachment(attachment);
+  const review = await fetchResumeReview({
+    resumeText,
+    fileName: attachment.name,
+    message: content,
+  });
+
+  const reviewPromptBlock = truncateForPrompt(review.promptBlock);
+
+  setResumeContext(state, message.channelId, {
+    fileName: attachment.name || `${review.fileBaseName}.pdf`,
+    uploadedAtISO: new Date().toISOString(),
+    promptBlock: reviewPromptBlock,
+  });
+
+  const replyPrompt = buildResumeUploadPrompt({
+    guildName: message.guild?.name || "DM",
+    channelName:
+      "name" in message.channel && typeof message.channel.name === "string"
+        ? message.channel.name
+        : "direct-message",
+    authorName: message.member?.displayName || message.author.username || "Unknown",
+    content,
+    reviewPromptBlock,
+  });
+
+  let replyText = review.discordSummary;
+  try {
+    replyText = truncate(await runOpenClawAgent(replyPrompt), 1800);
+  } catch (error) {
+    log(
+      `Resume upload polish pass fell back to deterministic summary: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+
+  const files = [
+    new AttachmentBuilder(Buffer.from(review.markdownReport, "utf8"), {
+      name: `${review.fileBaseName}-review.md`,
+    }),
+    new AttachmentBuilder(Buffer.from(review.htmlReport, "utf8"), {
+      name: `${review.fileBaseName}-annotated.html`,
+    }),
+  ];
+
+  await sendDiscordReplyWithFiles(message, replyText, files);
+  return true;
 }
 
 async function maybeRunProactiveCycle(client, state) {
@@ -389,12 +658,33 @@ async function maybeRunProactiveCycle(client, state) {
       })
       .join("\n");
 
+    let contextBlock = "";
+    try {
+      const workspaceContext = await fetchWorkspaceContext({
+        message: "",
+        transcript,
+        guildId: channel.guild?.id,
+        channelId,
+      });
+      contextBlock = workspaceContext?.contextBlock || "";
+    } catch (error) {
+      log(
+        `Discord workspace context unavailable for proactive nudge in ${channelId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
     const prompt = buildProactivePrompt({
       guildName: channel.guild?.name || "DM",
       channelName:
         "name" in channel && typeof channel.name === "string"
           ? channel.name
           : "direct-message",
+      contextBlock,
+      resumeContextBlock: buildActiveResumeContextBlock(
+        getResumeContext(state, channelId),
+      ),
       transcript,
     });
 
@@ -484,19 +774,61 @@ async function main() {
     touchHumanActivity(state, message.channelId, message.createdTimestamp);
 
     const content = stripMention(message.content || "", client.user.id);
-    if (!content) {
-      return;
-    }
 
     if (content === "!help") {
       await sendDiscordReply(
         message,
-        "hi hi, I can chat normally, help with AI Hire AI workflow stuff, and use the OpenClaw recruiter skills when your message is about hiring or candidates. If you want less noise, set `DISCORD_REPLY_ONLY_ON_MENTION=true` in your local env.",
+        "hi hi, I can chat normally, use live AI Hire AI workspace context for candidates / roles / applications / social-screen status, review uploaded PDF resumes, attach annotated report files, and run the OpenClaw recruiter skills when your message is about hiring or candidates. If you want less noise, set `DISCORD_REPLY_ONLY_ON_MENTION=true` in your local env.",
       );
       return;
     }
 
+    if (content === "!clearresume") {
+      clearResumeContext(state, message.channelId);
+      await sendDiscordReply(
+        message,
+        "cleared the active uploaded resume for this channel. If you drop a new PDF, I’ll use that one instead.",
+      );
+      return;
+    }
+
+    if (findPdfAttachment(message)) {
+      try {
+        await handleResumeUpload(message, state, content);
+      } catch (error) {
+        await sendDiscordReply(
+          message,
+          `ahh, I couldn't process that PDF cleanly: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+      return;
+    }
+
+    if (!content) {
+      return;
+    }
+
     const transcript = await fetchRecentTranscript(message.channel);
+    let contextBlock = "";
+
+    try {
+      const workspaceContext = await fetchWorkspaceContext({
+        message: content,
+        transcript,
+        guildId: message.guildId,
+        channelId: message.channelId,
+      });
+      contextBlock = workspaceContext?.contextBlock || "";
+    } catch (error) {
+      log(
+        `Discord workspace context unavailable for ${message.channelId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
     const prompt = buildReplyPrompt({
       guildName: message.guild?.name || "DM",
       channelName:
@@ -505,6 +837,10 @@ async function main() {
           : "direct-message",
       authorName: message.member?.displayName || message.author.username || "Unknown",
       content,
+      contextBlock,
+      resumeContextBlock: buildActiveResumeContextBlock(
+        getResumeContext(state, message.channelId),
+      ),
       transcript,
     });
 
