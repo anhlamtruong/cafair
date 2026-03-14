@@ -1,7 +1,7 @@
 import { z } from "zod";
 import {
   OPENCLAW_WEBHOOK_FORMATS,
-  mergeOpenClawNotificationTarget,
+  resolveOpenClawNotificationTarget,
   type OpenClawNotificationTarget,
 } from "./contracts";
 import { postOpenClawWebhook } from "./delivery";
@@ -157,7 +157,7 @@ export async function runOpenClawWorkflow(rawInput: unknown) {
 
   result.summaryText = buildWorkflowSummaryText(result);
 
-  const target = mergeOpenClawNotificationTarget(
+  const target = resolveOpenClawNotificationTarget(
     {
       channelId: input.channelId,
       conversationId: input.conversationId,
