@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  OPENCLAW_WEBHOOK_FORMATS,
   mergeOpenClawNotificationTarget,
   type OpenClawNotificationTarget,
 } from "./contracts";
@@ -14,6 +15,7 @@ import {
 
 const notificationTargetSchema = z.object({
   webhookUrl: z.string().url().optional(),
+  webhookFormat: z.enum(OPENCLAW_WEBHOOK_FORMATS).optional(),
   channelId: z.string().optional(),
   conversationId: z.string().optional(),
   actorId: z.string().optional(),
@@ -169,7 +171,7 @@ export async function runOpenClawWorkflow(rawInput: unknown) {
     target,
   });
   const delivery = target?.webhookUrl
-    ? await postOpenClawWebhook(target.webhookUrl, notificationPayload)
+    ? await postOpenClawWebhook(target, notificationPayload)
     : { delivered: false as const };
 
   addOpenClawNotification({
@@ -180,6 +182,7 @@ export async function runOpenClawWorkflow(rawInput: unknown) {
     conversationId: target?.conversationId,
     delivery: {
       webhookUrl: target?.webhookUrl,
+      webhookFormat: delivery.webhookFormat,
       delivered: delivery.delivered,
       deliveryError: delivery.deliveryError,
     },

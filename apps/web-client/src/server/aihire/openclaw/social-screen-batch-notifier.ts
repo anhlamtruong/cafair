@@ -136,7 +136,7 @@ async function emitBatchNotification(args: {
 }) {
   const payload = buildNotificationPayload(args);
   const delivery = args.target?.webhookUrl
-    ? await postOpenClawWebhook(args.target.webhookUrl, payload)
+    ? await postOpenClawWebhook(args.target, payload)
     : { delivered: false as const };
 
   addOpenClawNotification({
@@ -147,6 +147,7 @@ async function emitBatchNotification(args: {
     conversationId: args.target?.conversationId,
     delivery: {
       webhookUrl: args.target?.webhookUrl,
+      webhookFormat: delivery.webhookFormat,
       delivered: delivery.delivered,
       deliveryError: delivery.deliveryError,
     },
@@ -199,6 +200,7 @@ async function watchBatchAndNotify(args: {
       conversationId: args.notify?.conversationId,
       delivery: {
         webhookUrl: args.notify?.webhookUrl,
+        webhookFormat: args.notify?.webhookFormat,
         delivered: false,
         deliveryError: "Batch job disappeared before completion",
       },
@@ -222,6 +224,7 @@ async function watchBatchAndNotify(args: {
       conversationId: args.notify?.conversationId,
       delivery: {
         webhookUrl: args.notify?.webhookUrl,
+        webhookFormat: args.notify?.webhookFormat,
         delivered: false,
         deliveryError: "Timed out waiting for batch completion",
       },

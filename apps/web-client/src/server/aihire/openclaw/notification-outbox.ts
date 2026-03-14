@@ -16,6 +16,7 @@ export interface OpenClawNotificationRecord {
   conversationId?: string;
   delivery: {
     webhookUrl?: string;
+    webhookFormat?: "openclaw" | "slack" | "whatsapp" | "discord";
     delivered: boolean;
     deliveryError?: string;
   };

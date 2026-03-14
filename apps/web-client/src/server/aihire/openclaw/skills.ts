@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { OPENCLAW_WEBHOOK_FORMATS } from "./contracts";
 import {
   buildCandidatePacket,
   runTriage,
@@ -28,6 +29,7 @@ const openClawSkillNameSchema = z.enum(OPENCLAW_SKILL_NAMES);
 const notificationTargetSchema = z
   .object({
     webhookUrl: z.string().url().optional(),
+    webhookFormat: z.enum(OPENCLAW_WEBHOOK_FORMATS).optional(),
     channelId: z.string().optional(),
     conversationId: z.string().optional(),
     actorId: z.string().optional(),

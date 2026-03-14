@@ -7,6 +7,7 @@ const baseUrl = (process.env.AIHIRE_BASE_URL || "http://localhost:3002").replace
   "",
 );
 const webhookUrl = process.env.OPENCLAW_WEBHOOK_URL;
+const webhookFormat = process.env.OPENCLAW_WEBHOOK_FORMAT;
 
 function log(message) {
   process.stdout.write(`${message}\n`);
@@ -18,6 +19,9 @@ function usage() {
   log("");
   log(`AIHIRE_BASE_URL defaults to ${baseUrl}`);
   log("OPENCLAW_WEBHOOK_URL is optional and enables webhook delivery checks.");
+  log(
+    "OPENCLAW_WEBHOOK_FORMAT is optional. Use `slack`, `whatsapp`, or `discord` to preview channel-specific webhook payloads.",
+  );
 }
 
 async function requestJson(pathname, init = {}) {
@@ -68,6 +72,9 @@ async function main() {
   if (webhookUrl) {
     log(`Using OPENCLAW_WEBHOOK_URL=${webhookUrl}`);
   }
+  if (webhookFormat) {
+    log(`Using OPENCLAW_WEBHOOK_FORMAT=${webhookFormat}`);
+  }
 
   const skills = await requestJson("/api/aihire/openclaw/skills");
   log(`Discovered ${skills.skills.length} OpenClaw adapter skills.`);
@@ -89,6 +96,7 @@ async function main() {
     ],
     notify: {
       webhookUrl,
+      webhookFormat,
       channelId: "recruiter-social",
       conversationId: "thread-smoke-batch-001",
     },
@@ -113,6 +121,7 @@ async function main() {
     stopOnError: true,
     notify: {
       webhookUrl,
+      webhookFormat,
       channelId: "recruiter-social",
       conversationId: "thread-smoke-workflow-001",
     },
