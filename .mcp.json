@@ -7,14 +7,3 @@
   }
 }
 
-
-
-export OPENCLAW_PUBLIC_BASE_URL=http://localhost:3002
-export OPENCLAW_WEBHOOK_URL="""
-export OPENCLAW_WEBHOOK_FORMAT=discord
-npm run test:openclaw-smoke
-
-export OPENCLAW_PUBLIC_BASE_URL=http://localhost:3002
-export OPENCLAW_WEBHOOK_URL="https://discord.com/api/webhooks/1482400979163938827/tYk0hrOwvMyUI8ld2rt-jDsYTWaH-IihZPwe3k0HWZhAyudxFySXH5A_w--IZL_DyXE1"
-export OPENCLAW_WEBHOOK_FORMAT=discord
-npm run test:openclaw-smoke
