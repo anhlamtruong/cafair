@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSocialScreenBatchJob } from "@/lib/aihire/socialScreenBatchStore.db";
+import { getOpenClawSocialScreenBatchStatus } from "@/server/aihire/openclaw/social-screen-batch-notifier";
 
 type RouteContext = {
   params: Promise<{
@@ -10,30 +10,28 @@ type RouteContext = {
 export async function GET(_req: Request, context: RouteContext) {
   try {
     const { batchJobId } = await context.params;
-    const job = await getSocialScreenBatchJob(batchJobId);
+    const result = await getOpenClawSocialScreenBatchStatus(batchJobId);
 
-    if (!job) {
+    if (!result) {
       return NextResponse.json(
-        { ok: false, error: "Batch job not found", batchJobId },
+        {
+          ok: false,
+          error: "Batch job not found",
+          batchJobId,
+        },
         { status: 404 },
       );
     }
 
     return NextResponse.json({
       ok: true,
-      batchJobId: job.batchJobId,
-      status: job.status,
-      totalCandidates: job.totalCandidates,
-      completedCandidates: job.completedCandidates,
-      failedCandidates: job.failedCandidates,
-      createdAt: job.createdAt,
-      updatedAt: job.updatedAt,
+      ...result,
     });
   } catch (error) {
     return NextResponse.json(
       {
         ok: false,
-        error: "Failed to fetch batch job",
+        error: "Failed to fetch OpenClaw batch status",
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },

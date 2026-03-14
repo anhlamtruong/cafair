@@ -263,6 +263,107 @@ curl -s -X POST http://localhost:3002/api/aihire/social-screen/run \
   -d '{"mode":"deterministic","candidateId":"cand_np_001","candidateLabel":"Nguyen Phan Nguyen","linkedinUrl":"https://www.linkedin.com/in/nguyenpn1/","githubUrl":"https://github.com/ngstephen1","portfolioUrl":"https://lamanhtruong.com"}' | jq .
 ```
 
+## OpenClaw Integration
+
+These routes turn the existing social-screen batch flow into an OpenClaw-friendly
+notification and control layer without replacing the current API.
+
+### `POST /api/aihire/openclaw/social-screen-batch`
+
+Creates a batch job, starts processing immediately, records notifications in the
+local OpenClaw outbox, and optionally POSTs a completion payload to a webhook.
+
+Example:
+
+```bash
+curl -s -X POST http://localhost:3002/api/aihire/openclaw/social-screen-batch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "candidates": [
+      {
+        "candidateId": "cand_001",
+        "name": "Nguyen Phan Nguyen",
+        "roleTitle": "Software Engineer",
+        "school": "Virginia Tech",
+        "resumeText": "Built AI and real-time systems."
+      }
+    ],
+    "notify": {
+      "channelId": "recruiter-social",
+      "conversationId": "thread-001"
+    }
+  }' | jq .
+```
+
+Response:
+
+```json
+{
+  "ok": true,
+  "batchJobId": "ssb_1772591095000_2397ld",
+  "status": "queued",
+  "totalCandidates": 1,
+  "statusUrl": "/api/aihire/openclaw/social-screen-batch/ssb_1772591095000_2397ld",
+  "resultsUrl": "/api/aihire/social-screen/batch/ssb_1772591095000_2397ld/results",
+  "summaryUrl": "/api/aihire/openclaw/social-screen-batch/ssb_1772591095000_2397ld/summary"
+}
+```
+
+### `GET /api/aihire/openclaw/social-screen-batch/[batchJobId]`
+
+Returns the current batch job, the recruiter-ready summary object, and any
+OpenClaw notifications recorded for that batch.
+
+### `GET /api/aihire/openclaw/social-screen-batch/[batchJobId]/summary`
+
+Returns the recruiter-friendly summary payload for chat or notification use.
+
+### `GET /api/aihire/openclaw/notifications`
+
+Lists the in-memory OpenClaw notification outbox for local testing.
+
+Supported filters:
+
+- `batchJobId`
+- `workflowId`
+- `channelId`
+- `conversationId`
+- `type`
+- `limit`
+
+### `GET /api/aihire/openclaw/skills`
+
+Lists the available OpenClaw skills exposed by this app.
+
+### `POST /api/aihire/openclaw/skills`
+
+Runs one skill by name. Current skills:
+
+- `social_screen_batch.start`
+- `social_screen_batch.status`
+- `social_screen_batch.summary`
+- `triage_candidate`
+- `social_screen_candidate`
+- `candidate_packet.build`
+- `recruiter_actions.draft`
+
+### `POST /api/aihire/openclaw/workflows`
+
+Runs a sequential multi-agent workflow where each step references one of the
+skills above. This is the current bridge for the internal multi-agent workflow
+runner.
+
+## Real OpenClaw Skill Pack
+
+This repo now includes actual OpenClaw workspace skills in:
+
+- [skills/aihire-social-screen/SKILL.md](/Users/tranminhtue/Downloads/cafair/skills/aihire-social-screen/SKILL.md)
+- [skills/aihire-recruiter-workflows/SKILL.md](/Users/tranminhtue/Downloads/cafair/skills/aihire-recruiter-workflows/SKILL.md)
+
+Installation and config notes live in:
+
+- [OPENCLAW.md](/Users/tranminhtue/Downloads/cafair/apps/web-client/src/app/api/aihire/openclaw/OPENCLAW.md)
+
 Stream without copying a run id:
 
 ```bash

@@ -6,6 +6,8 @@
     "dev": "next dev -p 3002",
     "build": "NODE_OPTIONS=--max-old-space-size=8192 next build",
     "start": "next start",
+    "openclaw:live-test": "node scripts/openclaw-live-test.mjs",
+    "openclaw:smoke-test": "node scripts/openclaw-smoke-test.mjs",
     "db:generate": "npx drizzle-kit generate",
     "db:migrate": "npx drizzle-kit migrate",
     "db:push": "npx drizzle-kit push",

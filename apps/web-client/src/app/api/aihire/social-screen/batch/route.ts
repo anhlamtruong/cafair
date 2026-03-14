@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { createSocialScreenBatchJob } from "@aihire/socialScreenBatchStore";
+import { createSocialScreenBatchJob } from "@aihire/socialScreenBatchStore.db";
 import { runSocialScreenBatchJob } from "@aihire/runSocialScreenBatchJob";
+import { normalizeSocialScreenBatchCandidates } from "@/lib/aihire/socialScreenBatchInput";
 
 type CandidateInput = {
   candidateId: string;
@@ -36,22 +37,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const normalizedCandidates = body.candidates.map((candidate, index) => ({
-      candidateId:
-        typeof candidate.candidateId === "string" && candidate.candidateId.trim()
-          ? candidate.candidateId.trim()
-          : `candidate_${index + 1}`,
-      name:
-        typeof candidate.name === "string" && candidate.name.trim()
-          ? candidate.name.trim()
-          : `Candidate ${index + 1}`,
-      roleTitle:
-        typeof candidate.roleTitle === "string" ? candidate.roleTitle.trim() : "",
-      school:
-        typeof candidate.school === "string" ? candidate.school.trim() : "",
-      resumeText:
-        typeof candidate.resumeText === "string" ? candidate.resumeText : "",
-    }));
+    const normalizedCandidates = normalizeSocialScreenBatchCandidates(
+      body.candidates,
+    );
 
     const batchJob = await createSocialScreenBatchJob(normalizedCandidates);
 

@@ -9,6 +9,8 @@
   "scripts": {
     "dev:web": "npm run dev --workspace=@starter/web",
     "build:web": "npm run build --workspace=@starter/web",
+    "test:openclaw-live": "npm run openclaw:live-test --workspace=@starter/web",
+    "test:openclaw-smoke": "npm run openclaw:smoke-test --workspace=@starter/web",
     "dev:web-candidate": "npm run dev --workspace=@starter/web-candidate",
     "build:web-candidate": "npm run build --workspace=@starter/web-candidate",
     "dev:llm": "npm run dev --workspace=@starter/llm",

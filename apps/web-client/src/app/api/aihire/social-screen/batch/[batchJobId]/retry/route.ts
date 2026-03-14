@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import {
   getSocialScreenBatchJob,
   resetSocialScreenBatchJob,
-} from "@/lib/aihire/socialScreenBatchStore";
+} from "@/lib/aihire/socialScreenBatchStore.db";
 import { runSocialScreenBatchJob } from "@/lib/aihire/runSocialScreenBatchJob";
 
 type RouteContext = {
