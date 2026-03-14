@@ -3,3 +3,4 @@ export * from "@starter/db/schema";
 
 // App-specific schemas
 export * from "./socialScreenBatchJobs";
+export * from "./packages";

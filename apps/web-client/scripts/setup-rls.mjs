@@ -26,9 +26,14 @@ try {
         SELECT public.get_user_id();
       $$ LANGUAGE SQL STABLE;
     `);
-    console.log("✓ auth.user_id() function created (delegates to public.get_user_id)");
+    console.log(
+      "✓ auth.user_id() function created (delegates to public.get_user_id)",
+    );
   } catch (e) {
-    console.log("⚠ Could not create auth.user_id() (expected on Supabase):", e.message);
+    console.log(
+      "⚠ Could not create auth.user_id() (expected on Supabase):",
+      e.message,
+    );
     console.log("  → Will use public.get_user_id() in RLS policies instead");
   }
 
@@ -43,14 +48,25 @@ try {
   }
 
   // 3. Drop existing policies (to recreate with correct function reference)
-  const existingPolicies = await sql`SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public'`;
+  const existingPolicies =
+    await sql`SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public'`;
   for (const p of existingPolicies) {
-    await sql.unsafe(`DROP POLICY IF EXISTS "${p.policyname}" ON "${p.tablename}"`);
+    await sql.unsafe(
+      `DROP POLICY IF EXISTS "${p.policyname}" ON "${p.tablename}"`,
+    );
   }
   console.log(`✓ Dropped ${existingPolicies.length} existing policies`);
 
   // 4. Enable RLS on all tables
-  const tables = ["users", "examples", "events", "job_roles", "candidates", "evidence", "recruiter_actions"];
+  const tables = [
+    "users",
+    "examples",
+    "events",
+    "job_roles",
+    "candidates",
+    "evidence",
+    "recruiter_actions",
+  ];
   for (const t of tables) {
     await sql.unsafe(`ALTER TABLE "${t}" ENABLE ROW LEVEL SECURITY`);
   }
@@ -125,7 +141,8 @@ try {
   console.log(`✓ Created ${indexes.length} indexes`);
 
   // 7. Verify
-  const finalPolicies = await sql`SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public' ORDER BY tablename, policyname`;
+  const finalPolicies =
+    await sql`SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public' ORDER BY tablename, policyname`;
   console.log(`\n✓ Total RLS policies: ${finalPolicies.length}`);
   for (const p of finalPolicies) {
     console.log(`  ${p.tablename}: ${p.policyname}`);
