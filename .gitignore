@@ -41,6 +41,7 @@ __pycache__/
 .Python
 venv/
 .venv/
+.venv*/
 
 # Supabase
 supabase/.branches
@@ -49,6 +50,8 @@ supabase/.temp
 # Misc
 *.log
 .turbo
+
+apps/web-client-candidate/interactive-agent-candidate
 
 
 MasterDoc_AWS Hack 26.pdf.mcp.json
