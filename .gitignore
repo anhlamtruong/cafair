@@ -50,6 +50,7 @@ supabase/.temp
 # Misc
 *.log
 .turbo
+.openclaw-discord-bot-state.json
 
 apps/web-client-candidate/interactive-agent-candidate
 

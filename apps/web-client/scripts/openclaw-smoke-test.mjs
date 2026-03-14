@@ -1,13 +1,24 @@
 #!/usr/bin/env node
 
 import process from "node:process";
+import {
+  getConfiguredWebhookTarget,
+  loadRepoEnv,
+  redactWebhookUrl,
+} from "./openclaw-env.mjs";
+
+loadRepoEnv(import.meta.url);
 
 const baseUrl = (process.env.AIHIRE_BASE_URL || "http://localhost:3002").replace(
   /\/$/,
   "",
 );
-const webhookUrl = process.env.OPENCLAW_WEBHOOK_URL;
-const webhookFormat = process.env.OPENCLAW_WEBHOOK_FORMAT;
+const defaultTarget = getConfiguredWebhookTarget();
+const webhookUrl = defaultTarget?.webhookUrl;
+const webhookFormat = defaultTarget?.webhookFormat;
+const defaultChannelId = defaultTarget?.channelId || "recruiter-social";
+const defaultConversationId =
+  defaultTarget?.conversationId || "thread-openclaw-default";
 
 function log(message) {
   process.stdout.write(`${message}\n`);
@@ -18,7 +29,9 @@ function usage() {
   log("  node apps/web-client/scripts/openclaw-smoke-test.mjs");
   log("");
   log(`AIHIRE_BASE_URL defaults to ${baseUrl}`);
-  log("OPENCLAW_WEBHOOK_URL is optional and enables webhook delivery checks.");
+  log(
+    "OPENCLAW_WEBHOOK_URL or OPENCLAW_DISCORD_WEBHOOK_URL is optional and enables webhook delivery checks.",
+  );
   log(
     "OPENCLAW_WEBHOOK_FORMAT is optional. Use `slack`, `whatsapp`, or `discord` to preview channel-specific webhook payloads.",
   );
@@ -70,7 +83,7 @@ async function main() {
 
   log(`Using AIHIRE_BASE_URL=${baseUrl}`);
   if (webhookUrl) {
-    log(`Using OPENCLAW_WEBHOOK_URL=${webhookUrl}`);
+    log(`Using OPENCLAW_WEBHOOK_URL=${redactWebhookUrl(webhookUrl)}`);
   }
   if (webhookFormat) {
     log(`Using OPENCLAW_WEBHOOK_FORMAT=${webhookFormat}`);
@@ -97,8 +110,8 @@ async function main() {
     notify: {
       webhookUrl,
       webhookFormat,
-      channelId: "recruiter-social",
-      conversationId: "thread-smoke-batch-001",
+      channelId: defaultChannelId,
+      conversationId: `${defaultConversationId}-batch`,
     },
     pollIntervalMs: 400,
     timeoutMs: 15000,
@@ -122,8 +135,8 @@ async function main() {
     notify: {
       webhookUrl,
       webhookFormat,
-      channelId: "recruiter-social",
-      conversationId: "thread-smoke-workflow-001",
+      channelId: defaultChannelId,
+      conversationId: `${defaultConversationId}-workflow`,
     },
     steps: [
       {

@@ -9,7 +9,10 @@ import {
   type SocialScreenBatchCandidateInput,
 } from "@/lib/aihire/socialScreenBatchInput";
 import { runSocialScreenBatchJob } from "@/lib/aihire/runSocialScreenBatchJob";
-import type { OpenClawNotificationTarget } from "./contracts";
+import {
+  resolveOpenClawNotificationTarget,
+  type OpenClawNotificationTarget,
+} from "./contracts";
 import { postOpenClawWebhook } from "./delivery";
 import {
   addOpenClawNotification,
@@ -328,6 +331,7 @@ export async function startOpenClawSocialScreenBatch(
     throw new Error("At least one candidate is required");
   }
 
+  const notifyTarget = resolveOpenClawNotificationTarget(input.notify);
   const batchJob = await createSocialScreenBatchJob(normalizedCandidates);
   const summary = summarizeSocialScreenBatchJob(batchJob);
 
@@ -335,7 +339,7 @@ export async function startOpenClawSocialScreenBatch(
     type: "social_screen_batch.started",
     job: batchJob,
     summary,
-    target: input.notify,
+    target: notifyTarget,
   });
 
   void runSocialScreenBatchJob(batchJob.batchJobId).catch(async (error) => {
@@ -348,7 +352,7 @@ export async function startOpenClawSocialScreenBatch(
       type: "social_screen_batch.failed",
       job: failedJob,
       summary: summarizeSocialScreenBatchJob(failedJob),
-      target: input.notify,
+      target: notifyTarget,
     });
 
     console.error("OpenClaw social-screen batch failed:", error);
@@ -356,7 +360,7 @@ export async function startOpenClawSocialScreenBatch(
 
   void watchBatchAndNotify({
     batchJobId: batchJob.batchJobId,
-    notify: input.notify,
+    notify: notifyTarget,
     pollIntervalMs: input.pollIntervalMs ?? 1_500,
     timeoutMs: input.timeoutMs ?? 120_000,
   });

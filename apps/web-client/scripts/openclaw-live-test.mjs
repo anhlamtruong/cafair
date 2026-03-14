@@ -3,8 +3,10 @@
 import { execFile } from "node:child_process";
 import process from "node:process";
 import { promisify } from "node:util";
+import { loadRepoEnv } from "./openclaw-env.mjs";
 
 const execFileAsync = promisify(execFile);
+const { repoRoot } = loadRepoEnv(import.meta.url);
 const baseUrl = (process.env.AIHIRE_BASE_URL || "http://localhost:3002").replace(
   /\/$/,
   "",
@@ -35,7 +37,7 @@ async function runOpenClawJson(args) {
     "npx",
     ["openclaw@latest", ...args],
     {
-      cwd: process.cwd(),
+      cwd: repoRoot,
       env: process.env,
       maxBuffer: 1024 * 1024 * 8,
     },
@@ -60,7 +62,7 @@ async function runOpenClawText(args) {
     "npx",
     ["openclaw@latest", ...args],
     {
-      cwd: process.cwd(),
+      cwd: repoRoot,
       env: process.env,
       maxBuffer: 1024 * 1024 * 4,
     },

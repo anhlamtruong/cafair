@@ -16,6 +16,10 @@ This skill connects OpenClaw to the AI Hire AI recruiter agent adapter endpoints
 
 If `AIHIRE_BASE_URL` is not set, the helper script defaults to `http://localhost:3002`.
 
+If `notify` is omitted, the adapter can fall back to repo-root `.env` defaults
+such as `OPENCLAW_DISCORD_WEBHOOK_URL`,
+`OPENCLAW_DEFAULT_CHANNEL_ID`, and `OPENCLAW_DEFAULT_CONVERSATION_ID`.
+
 ## Available AI Hire AI skills
 
 - `triage_candidate`

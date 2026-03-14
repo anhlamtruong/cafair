@@ -142,6 +142,19 @@ node skills/aihire-recruiter-workflows/scripts/recruiter-workflows.mjs notificat
 
 ## Webhook test
 
+For local dev, the cleanest path is to put your notifier config in the repo-root
+`.env` once and let the scripts pick it up automatically:
+
+```bash
+OPENCLAW_PUBLIC_BASE_URL=http://localhost:3002
+OPENCLAW_DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+OPENCLAW_DEFAULT_CHANNEL_ID=recruiter-social
+OPENCLAW_DEFAULT_CONVERSATION_ID=discord-recruiter
+```
+
+The smoke-test and live-test scripts now load the repo-root `.env` on startup,
+so you do not need to manually `export` the Discord webhook every time.
+
 You can capture webhook deliveries locally without a real chat channel:
 
 ```bash
@@ -246,15 +259,52 @@ If you want recruiter notifications in Discord today, create a Discord
 incoming webhook for a target channel and use it directly:
 
 ```bash
-export OPENCLAW_WEBHOOK_URL="https://discord.com/api/webhooks/..."
-export OPENCLAW_WEBHOOK_FORMAT=discord
+OPENCLAW_DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
 npm run test:openclaw-smoke
 ```
 
 That gives you real Discord delivery for batch and workflow completions.
 
-If you need two-way recruiter chat through OpenClaw itself, use a channel that
-your installed runtime actually supports end to end. Check the live status with:
+If you need two-way recruiter chat, use the Discord companion bot script in
+this repo instead of `openclaw channels add`. It logs into Discord directly,
+forwards messages to the real `openclaw agent`, and can send low-frequency
+opt-in proactive check-ins.
+
+Add these to your local `.env`:
+
+```bash
+DISCORD_BOT_TOKEN=
+DISCORD_ALLOWED_CHANNEL_IDS=
+DISCORD_ALLOWED_GUILD_IDS=
+DISCORD_ALLOW_DMS=true
+DISCORD_REPLY_ONLY_ON_MENTION=false
+OPENCLAW_AGENT=main
+OPENCLAW_DISCORD_THINKING=low
+OPENCLAW_DISCORD_PROACTIVE_ENABLED=false
+OPENCLAW_DISCORD_PROACTIVE_CHANNEL_IDS=
+OPENCLAW_DISCORD_PROACTIVE_IDLE_MINUTES=180
+OPENCLAW_DISCORD_PROACTIVE_MIN_INTERVAL_MINUTES=360
+OPENCLAW_DISCORD_PROACTIVE_MAX_PER_DAY=3
+```
+
+Then run:
+
+```bash
+npm run dev:openclaw-discord
+```
+
+Notes for the Discord companion bot:
+
+- Enable `Message Content Intent` in the Discord Developer Portal.
+- Invite the bot to your server and give it access only to the channels you
+  actually want.
+- The bot is friendly, supportive, and willing to handle general chat, but it
+  uses the AI Hire AI OpenClaw skills when messages are actually about hiring,
+  applications, candidates, or recruiter workflows.
+- Proactive check-ins are opt-in and rate-limited by env so it does not spam.
+
+If you still want to inspect what the installed OpenClaw runtime supports
+directly, check live status with:
 
 ```bash
 npx openclaw@latest channels status --probe

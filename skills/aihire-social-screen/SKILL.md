@@ -31,6 +31,9 @@ If you want Discord delivery today, use a Discord incoming webhook URL with:
 OPENCLAW_WEBHOOK_URL="https://discord.com/api/webhooks/..." OPENCLAW_WEBHOOK_FORMAT=discord npm run test:openclaw-smoke
 ```
 
+For local dev, you can also place `OPENCLAW_DISCORD_WEBHOOK_URL` in the repo
+root `.env`, then the smoke-test script will pick it up automatically.
+
 ### Start a batch
 
 Create a JSON payload and pipe it to:
@@ -62,6 +65,10 @@ Expected input shape:
 ```
 
 The response contains `batchJobId`, `statusUrl`, `resultsUrl`, and `summaryUrl`.
+
+If `notify` is omitted, the adapter will fall back to any repo-root `.env`
+defaults such as `OPENCLAW_DISCORD_WEBHOOK_URL`,
+`OPENCLAW_DEFAULT_CHANNEL_ID`, and `OPENCLAW_DEFAULT_CONVERSATION_ID`.
 
 `notify.webhookFormat` may be:
 
