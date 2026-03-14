@@ -160,6 +160,7 @@ Then start a batch or workflow with:
 {
   "notify": {
     "webhookUrl": "http://localhost:4011",
+    "webhookFormat": "slack",
     "channelId": "recruiter-social",
     "conversationId": "thread-demo-001"
   }
@@ -170,6 +171,22 @@ For workflows, `notify` lives at the top level next to `steps`.
 
 Webhook payloads now include a top-level `text` field for chat-ready status
 updates, plus the richer `summary` or `result` object for deeper inspection.
+
+Set `notify.webhookFormat` to:
+
+- `openclaw` for the raw adapter payload
+- `slack` for Slack incoming-webhook style `text` + `blocks`
+- `whatsapp` for a compact plain-text WhatsApp-style message payload
+- `discord` for Discord webhook style `content` + `embeds`
+
+If you use `slack`, set `OPENCLAW_PUBLIC_BASE_URL` or `NEXT_PUBLIC_APP_URL`
+when you want clickable absolute links in chat instead of localhost defaults.
+
+If you use `whatsapp`, the delivery payload is a single `text` body designed to
+be easy for a WhatsApp bridge or OpenClaw-side sender to forward.
+
+If you use `discord`, the delivery payload is shaped like a Discord webhook:
+top-level `content` plus a single rich `embed`.
 
 ## One-command local check
 
@@ -191,6 +208,56 @@ or on a custom port:
 ```bash
 PORT=4012 node apps/web-client/scripts/openclaw-webhook-catcher.mjs
 OPENCLAW_WEBHOOK_URL=http://localhost:4012 node apps/web-client/scripts/openclaw-smoke-test.mjs
+```
+
+To preview Slack-style recruiter notifications locally:
+
+```bash
+PORT=4012 node apps/web-client/scripts/openclaw-webhook-catcher.mjs
+OPENCLAW_WEBHOOK_URL=http://localhost:4012 OPENCLAW_WEBHOOK_FORMAT=slack npm run test:openclaw-smoke
+```
+
+To preview WhatsApp-style recruiter notifications locally:
+
+```bash
+PORT=4012 node apps/web-client/scripts/openclaw-webhook-catcher.mjs
+OPENCLAW_WEBHOOK_URL=http://localhost:4012 OPENCLAW_WEBHOOK_FORMAT=whatsapp npm run test:openclaw-smoke
+```
+
+To preview Discord-style recruiter notifications locally:
+
+```bash
+PORT=4012 node apps/web-client/scripts/openclaw-webhook-catcher.mjs
+OPENCLAW_WEBHOOK_URL=http://localhost:4012 OPENCLAW_WEBHOOK_FORMAT=discord npm run test:openclaw-smoke
+```
+
+## Channel choice
+
+On this machine, the working Discord path is a Discord webhook URL, not
+`openclaw channels add`. The current OpenClaw runtime advertises `discord` in
+CLI help, but the actual command handler rejects it as `Unknown channel:
+discord`.
+
+iMessage/SMS is not ready because the OpenClaw `imsg` skill and local `imsg`
+CLI are not installed. WhatsApp-style formatting works in this repo, but your
+current OpenClaw runtime rejected real WhatsApp channel login as unsupported.
+
+If you want recruiter notifications in Discord today, create a Discord
+incoming webhook for a target channel and use it directly:
+
+```bash
+export OPENCLAW_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+export OPENCLAW_WEBHOOK_FORMAT=discord
+npm run test:openclaw-smoke
+```
+
+That gives you real Discord delivery for batch and workflow completions.
+
+If you need two-way recruiter chat through OpenClaw itself, use a channel that
+your installed runtime actually supports end to end. Check the live status with:
+
+```bash
+npx openclaw@latest channels status --probe
 ```
 
 ## Real OpenClaw live test

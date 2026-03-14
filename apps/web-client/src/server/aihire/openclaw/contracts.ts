@@ -1,5 +1,15 @@
+export const OPENCLAW_WEBHOOK_FORMATS = [
+  "openclaw",
+  "slack",
+  "whatsapp",
+  "discord",
+] as const;
+
+export type OpenClawWebhookFormat = (typeof OPENCLAW_WEBHOOK_FORMATS)[number];
+
 export interface OpenClawNotificationTarget {
   webhookUrl?: string;
+  webhookFormat?: OpenClawWebhookFormat;
   channelId?: string;
   conversationId?: string;
   actorId?: string;
@@ -17,6 +27,7 @@ export function mergeOpenClawNotificationTarget(
 
       return {
         webhookUrl: target.webhookUrl ?? acc.webhookUrl,
+        webhookFormat: target.webhookFormat ?? acc.webhookFormat,
         channelId: target.channelId ?? acc.channelId,
         conversationId: target.conversationId ?? acc.conversationId,
         actorId: target.actorId ?? acc.actorId,

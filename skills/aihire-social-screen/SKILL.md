@@ -19,7 +19,17 @@ The helper script talks to the real AI Hire AI OpenClaw adapter endpoints:
 
 If `AIHIRE_BASE_URL` is not set, the script defaults to `http://localhost:3002`.
 
-## Commands
+## Discord delivery note
+
+This repo can send Discord-ready notification payloads, but on this machine the
+current OpenClaw runtime rejects `openclaw channels add --channel discord`
+despite advertising `discord` in CLI help.
+
+If you want Discord delivery today, use a Discord incoming webhook URL with:
+
+```bash
+OPENCLAW_WEBHOOK_URL="https://discord.com/api/webhooks/..." OPENCLAW_WEBHOOK_FORMAT=discord npm run test:openclaw-smoke
+```
 
 ### Start a batch
 
@@ -44,6 +54,7 @@ Expected input shape:
   ],
   "notify": {
     "webhookUrl": "http://localhost:4011",
+    "webhookFormat": "slack",
     "channelId": "recruiter-social",
     "conversationId": "thread-001"
   }
@@ -51,6 +62,13 @@ Expected input shape:
 ```
 
 The response contains `batchJobId`, `statusUrl`, `resultsUrl`, and `summaryUrl`.
+
+`notify.webhookFormat` may be:
+
+- `openclaw` for the raw adapter payload
+- `slack` for Slack incoming-webhook style `text` + `blocks`
+- `whatsapp` for a compact plain-text WhatsApp-style message payload
+- `discord` for Discord webhook style `content` + `embeds`
 
 ### Check status
 

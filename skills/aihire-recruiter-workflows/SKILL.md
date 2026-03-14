@@ -79,6 +79,7 @@ Expected shape:
   "stopOnError": true,
   "notify": {
     "webhookUrl": "http://localhost:4011",
+    "webhookFormat": "slack",
     "channelId": "recruiter-social",
     "conversationId": "thread-review-001"
   },
@@ -120,6 +121,13 @@ Expected shape:
 When `notify.webhookUrl` is present, the workflow runner will POST a single
 completion or failure event with a top-level `text` summary plus the full
 workflow result.
+
+`notify.webhookFormat` may be:
+
+- `openclaw` for the raw adapter payload
+- `slack` for Slack incoming-webhook style `text` + `blocks`
+- `whatsapp` for a compact plain-text WhatsApp-style message payload
+- `discord` for Discord webhook style `content` + `embeds`
 
 ### Read notifications
 
