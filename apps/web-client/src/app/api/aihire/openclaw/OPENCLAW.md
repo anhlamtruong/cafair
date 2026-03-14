@@ -278,8 +278,12 @@ DISCORD_ALLOWED_CHANNEL_IDS=
 DISCORD_ALLOWED_GUILD_IDS=
 DISCORD_ALLOW_DMS=true
 DISCORD_REPLY_ONLY_ON_MENTION=false
+OPENCLAW_DISCORD_SHARED_SECRET=
 OPENCLAW_AGENT=main
 OPENCLAW_DISCORD_THINKING=low
+OPENCLAW_DISCORD_CONTEXT_TIMEOUT_MS=8000
+OPENCLAW_DISCORD_RESUME_REVIEW_TIMEOUT_MS=25000
+OPENCLAW_DISCORD_MAX_RESUME_CONTEXT_CHARS=12000
 OPENCLAW_DISCORD_PROACTIVE_ENABLED=false
 OPENCLAW_DISCORD_PROACTIVE_CHANNEL_IDS=
 OPENCLAW_DISCORD_PROACTIVE_IDLE_MINUTES=180
@@ -298,6 +302,18 @@ Notes for the Discord companion bot:
 - Enable `Message Content Intent` in the Discord Developer Portal.
 - Invite the bot to your server and give it access only to the channels you
   actually want.
+- When `npm run dev:web` is running, the bot now pulls real local AI Hire AI
+  workspace context from `/api/aihire/openclaw/discord-context`, including
+  matched candidates, job roles, recruiter actions, social-screen batches,
+  OpenClaw notifications, and apply-agent history.
+- If a user uploads a PDF resume in Discord, the bot now parses the PDF text,
+  builds an internal + internet role-fit bundle, replies with recruiter /
+  candidate feedback, and attaches an annotated HTML review plus markdown
+  report. That uploaded resume stays active in the channel for follow-up
+  questions until you replace it or run `!clearresume`.
+- If you set `OPENCLAW_DISCORD_SHARED_SECRET`, the bot sends it to the local
+  context route via `x-openclaw-discord-secret` so the context bridge is not
+  open accidentally.
 - The bot is friendly, supportive, and willing to handle general chat, but it
   uses the AI Hire AI OpenClaw skills when messages are actually about hiring,
   applications, candidates, or recruiter workflows.
