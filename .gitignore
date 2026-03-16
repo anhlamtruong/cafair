@@ -54,3 +54,8 @@ supabase/.temp
 MasterDoc_AWS Hack 26.pdf.mcp.json
 CLAUDE.md
 .claude/
+
+# Local run artifacts
+apps/llm/agents/.runs/
+apps/web-client-candidate/.next.bak.*/
+execution_report.json
