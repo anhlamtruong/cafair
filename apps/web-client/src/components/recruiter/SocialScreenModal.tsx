@@ -425,6 +425,7 @@ export function SocialScreenModal({
   const esRef = useRef<EventSource | null>(null);
   const sseClosedRef = useRef(false);
 
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -448,7 +449,6 @@ export function SocialScreenModal({
         const data = await res.json() as { ok: boolean; streamUrl?: string; reportUrl?: string };
         if (!data.ok || !data.streamUrl) return;
         if (sseClosedRef.current) return;
-
         const es = new EventSource(data.streamUrl);
         esRef.current = es;
 
@@ -456,7 +456,12 @@ export function SocialScreenModal({
           try {
             const parsed = JSON.parse(evt.data as string) as {
               stage?: string;
-              data?: { severity?: string; title?: string; text?: string; citations?: string[] };
+              data?: {
+                severity?: string;
+                title?: string;
+                text?: string;
+                citations?: Array<string | { quote?: string; url?: string; source?: string }>;
+              };
             };
             const sev = (parsed.data?.severity ?? "info").toLowerCase();
             const kind: FindingKind =
@@ -469,11 +474,15 @@ export function SocialScreenModal({
               stage === "linkedin" ? "linkedin"
               : stage === "github" ? "github"
               : "web";
+            const citationText = (parsed.data?.citations ?? [])
+              .map(c => typeof c === "string" ? c : (c.quote ?? c.url ?? c.source ?? ""))
+              .filter(Boolean)
+              .join(" · ");
             const finding: SocialFinding = {
               kind,
               category: PLATFORM_LABELS[platform],
               title: parsed.data?.title ?? parsed.data?.text ?? "Signal detected",
-              detail: (parsed.data?.citations ?? []).join(" · ") || "Details captured by agent",
+              detail: citationText || "Details captured by agent",
               platform,
             };
             setSseFindings(prev => [...prev, finding]);
@@ -900,6 +909,7 @@ export function SocialScreenModal({
           </div>
         </motion.div>
       </div>
+
     </>
   );
 }

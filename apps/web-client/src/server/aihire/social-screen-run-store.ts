@@ -559,7 +559,21 @@ export function resolveSocialScreenRunId(
 ): string | null {
   const normalized = runIdOrAlias.trim();
   if (!normalized) return null;
-  if (normalized === "demo") return ensureDemoRun()?.runId ?? null;
+  if (normalized === "demo") {
+    try {
+      const result = ensureDemoRun();
+      if (result) return result.runId;
+    } catch {
+      // ensureDemoRun writes files — fails on read-only filesystems (Vercel)
+    }
+    // Fallback: verify demo events exist and return "demo" directly
+    try {
+      const repoRoot = findRepoRoot();
+      const eventsJsonl = path.join(repoRoot, "apps", "llm", "agents", ".runs", "social", "demo", "demo", "events.jsonl");
+      if (fs.existsSync(eventsJsonl)) return "demo";
+    } catch { /* ignore */ }
+    return null;
+  }
   if (normalized !== "latest") return normalized;
   return readLatestPointer(candidate)?.runId ?? scanLatestRunPointer(candidate)?.runId ?? null;
 }
@@ -629,12 +643,27 @@ export function appendSocialScreenRunEvent(
 
 export function readSocialScreenRunEvents(runId: string): SocialScreenRunEvent[] {
   const manifest = getSocialScreenRunManifest(runId);
-  if (!manifest || !fs.existsSync(manifest.paths.eventsJsonl)) {
-    return [];
+  if (!manifest) return [];
+
+  let eventsPath = manifest.paths.eventsJsonl;
+  if (!fs.existsSync(eventsPath)) {
+    // Stored path may be from a different OS (e.g. Windows path on Linux).
+    // Reconstruct from repo root using the known demo location or relative segment.
+    try {
+      const repoRoot = findRepoRoot();
+      if (runId === "demo") {
+        eventsPath = path.join(repoRoot, "apps", "llm", "agents", ".runs", "social", "demo", "demo", "events.jsonl");
+      } else {
+        const rel = manifest.runDir.replace(/\\/g, "/").replace(/^.*\/apps\//, "apps/");
+        eventsPath = path.join(repoRoot, rel, "events.jsonl");
+      }
+    } catch { return []; }
   }
 
+  if (!fs.existsSync(eventsPath)) return [];
+
   return fs
-    .readFileSync(manifest.paths.eventsJsonl, "utf-8")
+    .readFileSync(eventsPath, "utf-8")
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
