@@ -1,6 +1,10 @@
 "use client";
 
+<<<<<<< HEAD
 import { useState, useEffect, useRef } from "react";
+=======
+import { useState, useEffect } from "react";
+>>>>>>> 03a3076 (feat: animations, sidebar logo fix, landing page stat fix, page restructure)
 import { motion } from "framer-motion";
 import { Check, AlertTriangle, X, Cpu } from "lucide-react";
 
@@ -906,8 +910,12 @@ export function SocialScreenModal({
         <motion.div
           className="w-full max-w-[1080px] flex flex-col rounded-[16px] overflow-hidden shadow-2xl"
           style={{ background: "#13131f", height: "min(88vh, 680px)" }}
+<<<<<<< HEAD
           initial={{ opacity: 0, scale: 0.94, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
+=======
+          initial={{ opacity: 0, scale: 0.94, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+>>>>>>> 03a3076 (feat: animations, sidebar logo fix, landing page stat fix, page restructure)
           transition={{ type: "spring", stiffness: 320, damping: 28 }}
         >
           {/* ── Title bar ───────────────────────────────────── */}
