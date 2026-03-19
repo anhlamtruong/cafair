@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  getSocialScreenBatchJob,
-  type SocialScreenBatchCandidateResult,
-} from "@/lib/aihire/socialScreenBatchStore";
+import { getSocialScreenBatchJob } from "@/lib/aihire/socialScreenBatchStore.db";
+import type { SocialScreenBatchCandidateResult } from "@/lib/aihire/socialScreenBatchTypes";
 
 type RouteContext = {
   params: Promise<{

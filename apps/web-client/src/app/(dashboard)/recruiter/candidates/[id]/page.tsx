@@ -834,7 +834,6 @@ export default function CandidateDetailPage() {
               Run Social Screen
             </motion.button>
 
-<<<<<<< HEAD
             {/* Get Notified on Agent — OpenClaw */}
             <motion.button
               onClick={() => setOpenClawOpen(true)}
@@ -849,9 +848,6 @@ export default function CandidateDetailPage() {
             </motion.button>
 
             <button
-=======
-            <motion.button
->>>>>>> 03a3076 (feat: animations, sidebar logo fix, landing page stat fix, page restructure)
               onClick={() => fireAction("sync_to_ats")}
               disabled={createAction.isPending}
               whileHover={{ scale: 1.02 }}
