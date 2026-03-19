@@ -1,14 +1,7 @@
 import * as React from "react";
 import { cn } from "../utils";
 
-<<<<<<< HEAD
-function Textarea({
-  className,
-  ...props
-}: React.ComponentProps<"textarea">) {
-=======
 function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
->>>>>>> 4f978b4 (merge)
   return (
     <textarea
       data-slot="textarea"
