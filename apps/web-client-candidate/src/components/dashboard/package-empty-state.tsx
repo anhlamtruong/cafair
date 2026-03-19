@@ -20,7 +20,10 @@ interface PackageEmptyStateProps {
   isCreating?: boolean;
 }
 
-export function PackageEmptyState({ onCreate, isCreating }: PackageEmptyStateProps) {
+export function PackageEmptyState({
+  onCreate,
+  isCreating,
+}: PackageEmptyStateProps) {
   return (
     <div className="flex min-h-[520px] flex-col items-center justify-center gap-12 rounded-2xl bg-bg-primary px-4 py-5">
       {/* ── CSS-only illustration ──────────────────────────────── */}

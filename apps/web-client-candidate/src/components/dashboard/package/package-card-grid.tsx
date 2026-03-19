@@ -25,7 +25,9 @@ export function PackageCardGrid() {
   const deleteMutation = useMutation(
     trpc.packages.delete.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: trpc.packages.list.queryKey() });
+        queryClient.invalidateQueries({
+          queryKey: trpc.packages.list.queryKey(),
+        });
       },
     }),
   );

@@ -175,39 +175,45 @@ export const getById = authedProcedure
         });
       }
 
-      const [experiences, skills, education, certifications, preferences, roleTargets] =
-        await Promise.all([
-          tx
-            .select()
-            .from(packageExperiences)
-            .where(eq(packageExperiences.packageId, input.id))
-            .orderBy(packageExperiences.sortOrder),
-          tx
-            .select()
-            .from(packageSkills)
-            .where(eq(packageSkills.packageId, input.id))
-            .orderBy(packageSkills.sortOrder),
-          tx
-            .select()
-            .from(packageEducation)
-            .where(eq(packageEducation.packageId, input.id))
-            .orderBy(packageEducation.sortOrder),
-          tx
-            .select()
-            .from(packageCertifications)
-            .where(eq(packageCertifications.packageId, input.id))
-            .orderBy(packageCertifications.sortOrder),
-          tx
-            .select()
-            .from(packagePreferences)
-            .where(eq(packagePreferences.packageId, input.id))
-            .limit(1),
-          tx
-            .select()
-            .from(packageRoleTargets)
-            .where(eq(packageRoleTargets.packageId, input.id))
-            .orderBy(packageRoleTargets.sortOrder),
-        ]);
+      const [
+        experiences,
+        skills,
+        education,
+        certifications,
+        preferences,
+        roleTargets,
+      ] = await Promise.all([
+        tx
+          .select()
+          .from(packageExperiences)
+          .where(eq(packageExperiences.packageId, input.id))
+          .orderBy(packageExperiences.sortOrder),
+        tx
+          .select()
+          .from(packageSkills)
+          .where(eq(packageSkills.packageId, input.id))
+          .orderBy(packageSkills.sortOrder),
+        tx
+          .select()
+          .from(packageEducation)
+          .where(eq(packageEducation.packageId, input.id))
+          .orderBy(packageEducation.sortOrder),
+        tx
+          .select()
+          .from(packageCertifications)
+          .where(eq(packageCertifications.packageId, input.id))
+          .orderBy(packageCertifications.sortOrder),
+        tx
+          .select()
+          .from(packagePreferences)
+          .where(eq(packagePreferences.packageId, input.id))
+          .limit(1),
+        tx
+          .select()
+          .from(packageRoleTargets)
+          .where(eq(packageRoleTargets.packageId, input.id))
+          .orderBy(packageRoleTargets.sortOrder),
+      ]);
 
       return {
         ...pkg,
@@ -495,7 +501,10 @@ export const updateExperiences = authedProcedure
         .limit(1);
 
       if (!pkg) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Package not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Package not found",
+        });
       }
 
       await tx
@@ -554,7 +563,10 @@ export const updateSkills = authedProcedure
         .limit(1);
 
       if (!pkg) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Package not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Package not found",
+        });
       }
 
       await tx
@@ -624,7 +636,10 @@ export const updateEducation = authedProcedure
         .limit(1);
 
       if (!pkg) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Package not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Package not found",
+        });
       }
 
       // Education
@@ -699,7 +714,10 @@ export const updatePreferences = authedProcedure
         .limit(1);
 
       if (!pkg) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Package not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Package not found",
+        });
       }
 
       // Check if preferences already exist
@@ -765,7 +783,10 @@ export const updateTargets = authedProcedure
         .limit(1);
 
       if (!pkg) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Package not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Package not found",
+        });
       }
 
       await tx

@@ -32,7 +32,9 @@ export default function PackageManagementPage() {
   const createMutation = useMutation(
     trpc.packages.create.mutationOptions({
       onSuccess: (created) => {
-        queryClient.invalidateQueries({ queryKey: trpc.packages.list.queryKey() });
+        queryClient.invalidateQueries({
+          queryKey: trpc.packages.list.queryKey(),
+        });
         router.push(`/dashboard/package-management/${created.id}`);
       },
     }),
@@ -84,7 +86,10 @@ export default function PackageManagementPage() {
             <PackageCardGrid />
           </div>
         ) : (
-          <PackageEmptyState onCreate={handleCreate} isCreating={createMutation.isPending} />
+          <PackageEmptyState
+            onCreate={handleCreate}
+            isCreating={createMutation.isPending}
+          />
         )}
       </motion.div>
     </motion.div>

@@ -12,8 +12,7 @@ import { parsedResumeSchema, type ParsedResume } from "./schema";
 
 /* ── Constants ───────────────────────────────────────────────────────── */
 
-const LLM_SERVICE_URL =
-  process.env.LLM_SERVICE_URL ?? "http://localhost:3001";
+const LLM_SERVICE_URL = process.env.LLM_SERVICE_URL ?? "http://localhost:3001";
 
 const PARSE_SYSTEM_PROMPT = `You are a resume parsing AI. Given the full text of a candidate's resume, extract structured data and return ONLY valid JSON with no markdown formatting, no backticks, no explanation.
 
@@ -105,9 +104,7 @@ async function callLlmService(resumeText: string): Promise<ParsedResume> {
 
 /* ── Gemini Fallback (direct SDK call) ───────────────────────────────── */
 
-async function callGeminiFallback(
-  resumeText: string,
-): Promise<ParsedResume> {
+async function callGeminiFallback(resumeText: string): Promise<ParsedResume> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY not set — cannot use Gemini fallback");

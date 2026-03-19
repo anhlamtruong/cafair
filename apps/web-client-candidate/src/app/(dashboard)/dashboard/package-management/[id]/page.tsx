@@ -444,10 +444,7 @@ export default function PackageBuildPage() {
                   exit={{ opacity: 0, x: -10 }}
                   transition={{ duration: 0.15 }}
                 >
-                  <SkillsSection
-                    items={skills}
-                    onChange={setSkillsDirty}
-                  />
+                  <SkillsSection items={skills} onChange={setSkillsDirty} />
                 </motion.div>
               )}
 
@@ -491,10 +488,7 @@ export default function PackageBuildPage() {
                   exit={{ opacity: 0, x: -10 }}
                   transition={{ duration: 0.15 }}
                 >
-                  <TargetsSection
-                    items={targets}
-                    onChange={setTargetsDirty}
-                  />
+                  <TargetsSection items={targets} onChange={setTargetsDirty} />
                 </motion.div>
               )}
             </AnimatePresence>

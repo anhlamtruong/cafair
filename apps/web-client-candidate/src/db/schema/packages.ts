@@ -33,12 +33,7 @@ import { users } from "@starter/db/schema";
    ──────────────────────────────────────────────────────────────────────── */
 
 export type PackageStatus = "draft" | "complete";
-export type ParseStatus =
-  | "idle"
-  | "uploading"
-  | "parsing"
-  | "parsed"
-  | "error";
+export type ParseStatus = "idle" | "uploading" | "parsing" | "parsed" | "error";
 
 export const candidatePackages = pgTable(
   "candidate_packages",
@@ -51,10 +46,7 @@ export const candidatePackages = pgTable(
 
     title: text("title").notNull(),
 
-    status: text("status")
-      .$type<PackageStatus>()
-      .notNull()
-      .default("draft"),
+    status: text("status").$type<PackageStatus>().notNull().default("draft"),
 
     parseStatus: text("parse_status")
       .$type<ParseStatus>()
@@ -64,9 +56,7 @@ export const candidatePackages = pgTable(
     resumeUrl: text("resume_url"),
     resumeFileName: text("resume_file_name"),
 
-    completionPercentage: integer("completion_percentage")
-      .notNull()
-      .default(0),
+    completionPercentage: integer("completion_percentage").notNull().default(0),
 
     aiRoleTitle: text("ai_role_title"),
     aiSummary: text("ai_summary"),
@@ -84,10 +74,7 @@ export const candidatePackages = pgTable(
   (table) => [
     index("candidate_packages_user_id_idx").on(table.userId),
     index("candidate_packages_status_idx").on(table.status),
-    index("candidate_packages_user_status_idx").on(
-      table.userId,
-      table.status,
-    ),
+    index("candidate_packages_user_status_idx").on(table.userId, table.status),
   ],
 );
 
@@ -123,9 +110,7 @@ export const packageExperiences = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [
-    index("package_experiences_package_id_idx").on(table.packageId),
-  ],
+  (table) => [index("package_experiences_package_id_idx").on(table.packageId)],
 );
 
 export type PackageExperienceRow = typeof packageExperiences.$inferSelect;
@@ -156,9 +141,7 @@ export const packageSkills = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [
-    index("package_skills_package_id_idx").on(table.packageId),
-  ],
+  (table) => [index("package_skills_package_id_idx").on(table.packageId)],
 );
 
 export type PackageSkillRow = typeof packageSkills.$inferSelect;
@@ -192,9 +175,7 @@ export const packageEducation = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [
-    index("package_education_package_id_idx").on(table.packageId),
-  ],
+  (table) => [index("package_education_package_id_idx").on(table.packageId)],
 );
 
 export type PackageEducationRow = typeof packageEducation.$inferSelect;
@@ -232,8 +213,7 @@ export const packageCertifications = pgTable(
   ],
 );
 
-export type PackageCertificationRow =
-  typeof packageCertifications.$inferSelect;
+export type PackageCertificationRow = typeof packageCertifications.$inferSelect;
 export type NewPackageCertificationRow =
   typeof packageCertifications.$inferInsert;
 
@@ -295,9 +275,7 @@ export const packageRoleTargets = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [
-    index("package_role_targets_package_id_idx").on(table.packageId),
-  ],
+  (table) => [index("package_role_targets_package_id_idx").on(table.packageId)],
 );
 
 export type PackageRoleTargetRow = typeof packageRoleTargets.$inferSelect;

@@ -34,7 +34,10 @@ interface PackageCardProps {
   onDelete?: (id: string) => void;
 }
 
-const SECTION_LABELS: { key: keyof PackageCardProps["pkg"]["sections"]; label: string }[] = [
+const SECTION_LABELS: {
+  key: keyof PackageCardProps["pkg"]["sections"];
+  label: string;
+}[] = [
   { key: "experience", label: "Experience" },
   { key: "skills", label: "Skills" },
   { key: "education", label: "Education" },
